@@ -1,0 +1,124 @@
+page-game {
+    .headlines {
+        font-size: 10px;
+        text-align: center;
+        margin-top: 0px;
+        color: dimgray;
+    }
+
+    .online-players {
+        width: 100%;
+        height: 100px;
+        text-align: center;
+        border-bottom: 1px solid black;
+    }
+
+    .online-players ol {
+        list-style: none;
+        display: inline-flex;
+        text-align: center;
+        margin: 0 auto;
+        padding: 0px;
+    }
+
+    .online-players li {
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+
+    .decks {
+        width: 100%;
+        height: 125px;
+        display: inline-flex;
+        margin-top: 16px;
+        margin-bottom: 16px;
+    }
+
+    .decks-wrapper {
+        display: inline-flex;
+        margin: 0 auto;
+    }
+
+    .decks-wrapper .played {
+        margin-right: 5px;
+    }
+
+    .decks-wrapper .pick-up {
+        margin-left: 5px;
+    }
+
+    .active-cards {
+        width: 100%;
+        margin: 0 auto;
+        height: 35%;
+    }
+
+    .active-cards .properties {
+        width: 50%;
+        float: left;
+        height: 100%;
+        overflow: scroll;
+    }
+
+    .active-cards .money-cards {
+        width: 50%;
+        float: left;
+        height: 100%;
+        overflow: scroll;
+    }
+
+    // .active-cards .money-cards .value {
+    //     margin: 0 auto;
+    //     width: 50%;
+    //     text-align: center;
+    //     float: left;
+    //     height: 105px;
+    //     line-height: 105px;
+    // }
+
+    .active-cards ul {
+        list-style: none;
+        padding: 0px;
+    }
+
+    .active-cards li {
+        display: flex;
+    }
+
+    .active-cards .money-cards li {
+        margin-bottom: 5px;
+        float: right;
+    }
+
+    .player-hand {
+        position: fixed;
+        width: 100%;
+        height: 150px;
+        bottom: 0px;
+        left: 0px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .player-hand ul {
+        list-style: none;
+        display: inline-flex;
+        margin: 0 auto;
+        padding: 0px;
+        width: 100%;
+        height: inherit;
+        overflow: scroll;
+    }
+
+    .player-hand li {
+        margin: 0 auto;
+        margin-left: 2px;
+        margin-right: 2px;
+    }
+
+    .player-hand img {
+        width: 75px;
+        height: 125px;
+        max-width: none;
+    }
+}

@@ -1,0 +1,59 @@
+import { BrowserModule } from '@angular/platform-browser';
+import { ErrorHandler, NgModule } from '@angular/core';
+import { IonicApp, IonicErrorHandler, IonicModule } from 'ionic-angular';
+
+import { MyApp } from './app.component';
+import { HomePage } from '../pages/home/home';
+import { ProfilePage } from '../pages/profile/profile';
+import { GamePage } from '../pages/game/game';
+import { CardPopover } from '../pages/card_popover/card_popover';
+import { WildcardPopover } from '../pages/wildcard_popover/wildcard_popover';
+import { PlayersPopover } from '../pages/players_popover/players_popover';
+import { OpponentActionsPopover } from '../pages/opponent_actions_popover/opponent_actions_popover';
+
+import { SocketIoModule, SocketIoConfig } from 'ng-socket-io';
+const config: SocketIoConfig = { url: '/', options: {} };
+
+import { StatusBar } from '@ionic-native/status-bar';
+import { SplashScreen } from '@ionic-native/splash-screen';
+import { DataProvider } from '../providers/data/data';
+import { IonicStorageModule } from '@ionic/storage';
+import { SocketProvider } from '../providers/socket/socket';
+
+@NgModule({
+  declarations: [
+    MyApp,
+    HomePage,
+    ProfilePage,
+    GamePage,
+    CardPopover,
+    WildcardPopover,
+    PlayersPopover,
+    OpponentActionsPopover
+  ],
+  imports: [
+    BrowserModule,
+    IonicModule.forRoot(MyApp),
+    SocketIoModule.forRoot(config),
+    IonicStorageModule.forRoot()
+  ],
+  bootstrap: [IonicApp],
+  entryComponents: [
+    MyApp,
+    HomePage,
+    ProfilePage,
+    GamePage,
+    CardPopover,
+    WildcardPopover,
+    PlayersPopover,
+    OpponentActionsPopover
+  ],
+  providers: [
+    StatusBar,
+    SplashScreen,
+    {provide: ErrorHandler, useClass: IonicErrorHandler},
+    DataProvider,
+    SocketProvider
+  ]
+})
+export class AppModule {}
