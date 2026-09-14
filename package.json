@@ -1,0 +1,17 @@
+{
+  "name": "monopoly-deal-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client",
+    "shared"
+  ],
+  "scripts": {
+    "dev:server": "npm --workspace=server start",
+    "dev:client": "npm --workspace=client dev",
+    "build:client": "npm --workspace=client run build",
+    "test:server": "npm --workspace=server test",
+    "test": "npm --workspace=server test && npm --workspace=client run build"
+  }
+}

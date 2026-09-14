@@ -1,0 +1,40 @@
+name: monopoly-deal-prod
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: monopoly-deal-server:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 9000
+    expose:
+      - "9000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9000/api/monopoly/rooms"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks:
+      - monopoly-deal-net
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    image: monopoly-deal-client:local
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${MONOPOLY_BIND_ADDRESS:-127.0.0.1}:${MONOPOLY_PORT:-18080}:8080"
+    networks:
+      - monopoly-deal-net
+
+networks:
+  monopoly-deal-net:
+    driver: bridge
