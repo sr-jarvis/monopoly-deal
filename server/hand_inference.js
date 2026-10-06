@@ -88,7 +88,7 @@ function inferOpponentHand(gameState, opponentPlayerId, observerPlayerId = null)
   }
 
   const catalog = cardCatalogModule.getCardCatalog();
-  const totalDeckCards = catalog.totalCards || 108;
+  const totalDeckCards = catalog.totalCards || 106;
   const unseenTotal = Math.max(0, totalDeckCards - visibleCards.length);
 
   // Count visible occurrences of key card titles

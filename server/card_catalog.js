@@ -1,5 +1,6 @@
 'use strict';
 const Deck = require('./models/Deck');
+const canonicalCatalog = require('./fixtures/hasbro-b0965-catalog.json');
 
 const RENT_TIERS = {
     Brown: [1, 2],
@@ -120,6 +121,12 @@ function buildCardCatalog() {
     });
 
     return {
+        edition: canonicalCatalog.edition,
+        sources: canonicalCatalog.sources,
+        notes: canonicalCatalog.notes,
+        referenceCards: canonicalCatalog.referenceCards,
+        printedTotalCardsIncludingReference: canonicalCatalog.printedTotalCardsIncludingReference,
+        playableTotalCards: canonicalCatalog.playableTotalCards,
         totalCards: deck.cards.length,
         cardTypeBreakdown: {
             action: deck.actionCards.length,

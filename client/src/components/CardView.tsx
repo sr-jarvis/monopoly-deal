@@ -14,6 +14,7 @@ import {
 export interface CardViewProps {
   card: Card;
   onClick?: () => void;
+  onPreview?: () => void;
   selected?: boolean;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
@@ -83,6 +84,7 @@ function resolveCardImage(card: Card): string | null {
 export const CardView: React.FC<CardViewProps> = ({
   card,
   onClick,
+  onPreview,
   selected,
   disabled,
   size = 'md',
@@ -121,6 +123,21 @@ export const CardView: React.FC<CardViewProps> = ({
   const handleClick = () => {
     if (disabled) return;
     if (onClick) onClick();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (disabled || !onClick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
+  const handlePreviewClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (!disabled && onPreview) {
+      onPreview();
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -263,7 +280,11 @@ export const CardView: React.FC<CardViewProps> = ({
   return (
     <div
       ref={rootRef}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick && !disabled ? 0 : undefined}
+      aria-label={onClick ? `${cardTitle} card` : undefined}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onAnimationEnd={handleAnimationEnd}
@@ -387,6 +408,19 @@ export const CardView: React.FC<CardViewProps> = ({
           className="md-card-flip-badge"
         >
           ⇄
+        </button>
+      )}
+
+      {/* Preview Affordance */}
+      {onPreview && !disabled && (
+        <button
+          type="button"
+          onClick={handlePreviewClick}
+          aria-label={`Preview ${cardTitle}`}
+          title={`Preview ${cardTitle}`}
+          className="absolute right-1 top-1 z-30 rounded-full border border-sky-300/70 bg-slate-950/85 px-1.5 py-0.5 text-[10px] font-black text-sky-100 shadow-lg hover:bg-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-300"
+        >
+          🔍
         </button>
       )}
 

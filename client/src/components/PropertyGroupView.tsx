@@ -7,6 +7,7 @@ interface PropertyGroupViewProps {
   color: PropertyColor;
   cards: Card[];
   onCardClick?: (card: Card) => void;
+  onPreviewCard?: (card: Card) => void;
   selectedCardId?: string;
   isCompleteSet?: boolean;
   hasHouse?: boolean;
@@ -49,6 +50,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
   color,
   cards,
   onCardClick,
+  onPreviewCard,
   selectedCardId,
   isCompleteSet,
   hasHouse,
@@ -179,6 +181,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
               size="sm"
               selected={selectedCardId === card.id}
               onClick={() => onCardClick && onCardClick(card)}
+              onPreview={onPreviewCard ? () => onPreviewCard(card) : undefined}
             />
           </div>
         ))}

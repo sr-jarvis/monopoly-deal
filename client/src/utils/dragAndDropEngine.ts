@@ -23,6 +23,35 @@ export interface DropZoneTarget {
   targetIndex?: number;
 }
 
+export type ActionAffordance = 'direct-action' | 'board-upgrade' | 'attach-only' | 'response-only' | 'not-action';
+
+export function getActionAffordance(card: Card): ActionAffordance {
+  const kind = (card.kind || card.type || '').toUpperCase();
+  const title = card.title || card.name || '';
+
+  if (kind === 'RENT') {
+    return 'direct-action';
+  }
+  if (kind !== 'ACTION') {
+    return 'not-action';
+  }
+  if (title === 'Double The Rent') {
+    return 'attach-only';
+  }
+  if (title === 'Just Say No') {
+    return 'response-only';
+  }
+  if (title === 'House' || title === 'Hotel') {
+    return 'board-upgrade';
+  }
+  return 'direct-action';
+}
+
+export function canDropOnCenterAction(card: Card): boolean {
+  const affordance = getActionAffordance(card);
+  return affordance === 'direct-action' || affordance === 'board-upgrade';
+}
+
 export const DRAG_MIME_TYPE = 'application/x-monopoly-deal-card';
 
 /**
@@ -70,8 +99,9 @@ export function isDropEligible(
     }
 
     case 'ACTION': {
-      // Action or Rent cards can be played to the action pile
-      return kind === 'ACTION' || kind === 'RENT';
+      // Only card subtypes that can begin a normal center action should light up the action pile.
+      // Double The Rent is attach-only with a Rent card; Just Say No is response-only.
+      return canDropOnCenterAction(card);
     }
 
     default:
