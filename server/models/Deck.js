@@ -52,10 +52,10 @@ class Deck {
             this.actionCards.push(makeDebtCollector());
             this.actionCards.push(makeItsMyBirthday());
             this.actionCards.push(makeHouse());
-            this.actionCards.push(makeHotel());
-        }
-        for (let i = 0; i < 4; i++) {
             this.actionCards.push(makeForcedDeal());
+        }
+        for (let i = 0; i < 2; i++) {
+            this.actionCards.push(makeHotel());
         }
         for (let i = 0; i < 10; i++) {
             this.actionCards.push(makePassGo());

@@ -23,8 +23,8 @@ describe('game_manager', function() {
             assert.strictEqual(state.players.p1.hand.length, 5);
             assert.strictEqual(state.players.p2.hand.length, 5);
             
-            // 108 cards total - 10 dealt = 98 remaining in draw pile
-            assert.strictEqual(state.drawPile.length, 98);
+            // 106 playable cards total - 10 dealt = 96 remaining in draw pile
+            assert.strictEqual(state.drawPile.length, 96);
             assert.strictEqual(state.discardPile.length, 0);
             
             // Turn initialized for first player in DRAW phase
@@ -49,7 +49,7 @@ describe('game_manager', function() {
             
             const nextState = result.gameState;
             assert.strictEqual(nextState.players.p1.hand.length, 7); // 5 initial + 2 drawn
-            assert.strictEqual(nextState.drawPile.length, 96);
+            assert.strictEqual(nextState.drawPile.length, 94);
             assert.strictEqual(nextState.turn.phase, PHASES.ACTION);
             assert.strictEqual(nextState.turn.hasDrawn, true);
         });
@@ -66,7 +66,7 @@ describe('game_manager', function() {
             
             const nextState = result.gameState;
             assert.strictEqual(nextState.players.p1.hand.length, 5);
-            assert.strictEqual(nextState.drawPile.length, 93);
+            assert.strictEqual(nextState.drawPile.length, 91);
             assert.strictEqual(nextState.turn.phase, PHASES.ACTION);
         });
 
@@ -265,7 +265,7 @@ describe('game_manager', function() {
 
             // drawPile is hidden, but drawPileCount exists
             assert.strictEqual(clientViewForP1.drawPile, undefined);
-            assert.strictEqual(clientViewForP1.drawPileCount, 98);
+            assert.strictEqual(clientViewForP1.drawPileCount, 96);
         });
     });
 });

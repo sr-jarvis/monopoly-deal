@@ -4,6 +4,7 @@ import { CardView } from './CardView';
 import { PropertyGroupView } from './PropertyGroupView';
 import { ActionChoiceModal } from './ActionChoiceModal';
 import { RearrangeWildcardModal } from './RearrangeWildcardModal';
+import { CardPreviewModal } from './CardPreviewModal';
 import { PaymentModal } from './PaymentModal';
 import { DiscardModal } from './DiscardModal';
 import { WinModal } from './WinModal';
@@ -45,6 +46,7 @@ import { handleTouchStart, handleTouchMove, handleTouchEnd } from '../utils/touc
 export const GameBoardView: React.FC = () => {
   const { gameState, roomCode, events, gameOver, resetMatch, displayName } = useGameStore();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [previewCard, setPreviewCard] = useState<Card | null>(null);
   const [rearrangeTarget, setRearrangeTarget] = useState<{ card: Card; color: PropertyColor } | null>(null);
   const [sortMode, setSortMode] = useState<HandSortMode>(getStoredSortMode);
   const [showPlayableOnly, setShowPlayableOnly] = useState<boolean>(false);
@@ -147,6 +149,15 @@ export const GameBoardView: React.FC = () => {
   const handleCardClick = (card: Card) => {
     if (!isMyTurn || isDrawPhase || isDiscardPhase || waitingForPayment) return;
     setActiveCard(card);
+  };
+
+  const handlePreviewCard = (card: Card) => {
+    setPreviewCard(card);
+  };
+
+  // opponent public property cards are previewable; opponent hidden hand counts stay redacted and are never passed here.
+  const handleOpponentPublicPreviewCard = (card: Card) => {
+    handlePreviewCard(card);
   };
 
   const handleSelfPropertyCardClick = (color: PropertyColor) => (card: Card) => {
@@ -527,6 +538,7 @@ export const GameBoardView: React.FC = () => {
                         isCompleteSet={opp.completedSetColors?.includes(color as PropertyColor)}
                         hasHouse={opp.buildings?.[color as PropertyColor]?.house}
                         hasHotel={opp.buildings?.[color as PropertyColor]?.hotel}
+                        onPreviewCard={handleOpponentPublicPreviewCard}
                       />
                     ) : null
                   )}
@@ -602,6 +614,7 @@ export const GameBoardView: React.FC = () => {
                     hasHouse={gameState.self.buildings?.[color as PropertyColor]?.house}
                     hasHotel={gameState.self.buildings?.[color as PropertyColor]?.hotel}
                     onCardClick={canRearrange ? handleSelfPropertyCardClick(color as PropertyColor) : undefined}
+                    onPreviewCard={handlePreviewCard}
                     selectedCardId={rearrangeTarget?.card.id}
                     onDropCard={handleDropPropertyCard}
                     isMyTurn={isMyTurn}
@@ -699,6 +712,7 @@ export const GameBoardView: React.FC = () => {
                     key={card.id}
                     card={card}
                     onClick={() => handleCardClick(card)}
+                    onPreview={() => handlePreviewCard(card)}
                     selected={activeCard?.id === card.id}
                     animation={isDealing ? 'deal' : null}
                     dealIndex={dealIdx}
@@ -734,6 +748,14 @@ export const GameBoardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Action Choice Modal */}
+      {previewCard && (
+        <CardPreviewModal
+          card={previewCard}
+          onClose={() => setPreviewCard(null)}
+        />
+      )}
 
       {/* Action Choice Modal */}
       {activeCard && (

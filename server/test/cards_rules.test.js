@@ -2,6 +2,7 @@
 const assert = require('assert');
 const card_catalog = require('../card_catalog');
 const rules_catalog = require('../rules_catalog');
+const canonicalCatalog = require('../fixtures/hasbro-b0965-catalog.json');
 
 describe('card_catalog', function() {
     it('returns totalCards matching the full deck size', function() {
@@ -32,6 +33,15 @@ describe('card_catalog', function() {
         const c = card_catalog.getCardCatalog();
         const dealBreaker = c.actionCards.find(a => a.title === 'Deal Breaker');
         assert(dealBreaker && dealBreaker.description.length > 0);
+    });
+
+    it('cites the canonical Hasbro B0965/E3113 source and omits reference cards from the draw pile', function() {
+        const c = card_catalog.getCardCatalog();
+        assert.strictEqual(c.edition, canonicalCatalog.edition);
+        assert.deepStrictEqual(c.sources, canonicalCatalog.sources);
+        assert.strictEqual(c.totalCards, canonicalCatalog.playableTotalCards);
+        assert.strictEqual(c.printedTotalCardsIncludingReference, canonicalCatalog.printedTotalCardsIncludingReference);
+        assert.deepStrictEqual(c.referenceCards, canonicalCatalog.referenceCards);
     });
 });
 

@@ -55,7 +55,7 @@ function createGameState(playerList) {
 
     // Create and shuffle authoritative deck
     const deckInstance = new Deck();
-    const drawPile = deckInstance.cards; // 108 unique cards with server-stamped ids
+    const drawPile = deckInstance.cards; // 106 playable cards with server-stamped ids; Hasbro's 4 rules/reference cards are not shuffled
     const discardPile = [];
 
     const state = {

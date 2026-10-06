@@ -36,7 +36,8 @@ describe("End-to-End Gameplay Scenarios & Socket.IO Smoke Test", function() {
             res.on("end", () => {
                 const parsed = JSON.parse(data);
                 expect(parsed.status).to.equal("ok");
-                expect(parsed.catalog.totalCards).to.equal(108);
+                expect(parsed.catalog.totalCards).to.equal(106);
+                expect(parsed.catalog.printedTotalCardsIncludingReference).to.equal(110);
                 done();
             });
         });

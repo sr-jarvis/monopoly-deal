@@ -65,7 +65,7 @@ console.log(`Registering players:`);
 players.forEach(p => console.log(`  - Registered ${BOLD}${p.name}${RESET} on channel ${p.id}`));
 
 let state = game_manager.createGameState(players);
-console.log(`\n[SUCCESS] Authoritative deck created & shuffled (108 cards total).`);
+console.log(`\n[SUCCESS] Authoritative Hasbro-standard playable deck created & shuffled (106 cards total; 4 rules/reference cards excluded).`);
 console.log(`[SUCCESS] Dealt 5 initial cards to all players.`);
 
 renderPlayerState(state, 'socket_stark_001');
