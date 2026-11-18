@@ -76,6 +76,9 @@ function createGameState(playerList) {
     const discardPile = [];
 
     const state = {
+        matchId: crypto.randomUUID(),
+        drawEvents: [],
+        drawEventCounter: 0,
         status: 'IN_PROGRESS',
         winnerId: null,
         winDetails: null,
@@ -92,11 +95,7 @@ function createGameState(playerList) {
 
     // Deal 5 initial cards to every player
     turnOrder.forEach(playerId => {
-        for (let i = 0; i < 5; i++) {
-            if (state.drawPile.length > 0) {
-                state.players[playerId].hand.push(state.drawPile.pop());
-            }
-        }
+        drawCards(state, state.players[playerId], 5, 'INITIAL');
     });
 
     // Start the first player's turn
@@ -767,7 +766,7 @@ function resolveResponse(state, action) {
  * draw pile runs out it preserves the normal mandatory-draw reshuffle rule.
  * Returns fewer than `count` only when both piles are exhausted.
  */
-function drawCards(state, player, count) {
+function drawCards(state, player, count, kind = 'DRAW') {
     let drawn = 0;
     for (let i = 0; i < count; i++) {
         if (state.drawPile.length === 0 && state.discardPile.length > 0) {
@@ -778,6 +777,12 @@ function drawCards(state, player, count) {
         player.hand.push(state.drawPile.pop());
         drawn += 1;
     }
+    // Metadata contains public counts only, including a successful zero-card
+    // draw when both piles are exhausted. Never derive IDs from bounded length.
+    state.drawEventCounter = (state.drawEventCounter || 0) + 1;
+    state.drawEvents = [...(state.drawEvents || []), {
+        id: state.drawEventCounter, playerId: player.id, count: drawn, kind
+    }].slice(-64);
     return drawn;
 }
 
@@ -926,6 +931,7 @@ function getMatchTelemetry(gameState) {
  */
 function toClientView(gameState, playerId) {
     const redacted = JSON.parse(JSON.stringify(gameState));
+    delete redacted.drawEventCounter;
     
     if (redacted.pendingActionResolution) delete redacted.pendingActionResolution.boardAfter;
 

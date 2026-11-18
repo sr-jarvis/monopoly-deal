@@ -132,12 +132,13 @@ describe('Monopoly Deal 3D Card Shuffle, Cut & Multi-Seat Deck Dealer Flight Ani
       assert.ok(content.includes('handleMute'), 'Must provide audio mute control');
     });
 
-    it('verifies GameBoardView.tsx and LobbyView.tsx mount CardShuffleFlightOverlay', () => {
+    it('verifies no competing full-shuffle overlays mount in board or lobby', () => {
       const boardContent = fs.readFileSync(boardPath, 'utf8');
-      assert.ok(boardContent.includes('CardShuffleFlightOverlay'), 'GameBoardView must mount CardShuffleFlightOverlay');
+      assert.ok(boardContent.includes('<DrawSequenceOverlay />'), 'Board mounts the single draw orchestrator');
+      assert.ok(!boardContent.includes('<CardShuffleFlightOverlay'), 'No competing full-shuffle overlay');
 
       const lobbyContent = fs.readFileSync(lobbyPath, 'utf8');
-      assert.ok(lobbyContent.includes('CardShuffleFlightOverlay'), 'LobbyView must mount CardShuffleFlightOverlay');
+      assert.ok(!lobbyContent.includes('<CardShuffleFlightOverlay'), 'Lobby never manufactures a shuffle');
     });
   });
 });

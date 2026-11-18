@@ -31,6 +31,7 @@ app.get('/api/monopoly/version', (req, res) => res.json({ revision: process.env.
 app.get('/healthz', (req, res) => res.json({ ok: true, revision: process.env.APP_REVISION || 'development' }));
 
 const game_manager = require("./game_manager");
+const transport_game = require('./transport_game');
 const room_view = require("./room_view");
 const room_registry = require("./room_registry");
 const card_catalog = require("./card_catalog");
@@ -934,7 +935,7 @@ function settlePendingBotDebts(roomCode) {
             // Preserve the existing conservative bot policy; human JSN is fully supported.
             const action = { type: 'ACCEPT_ACTION', playerId: responderId };
             const before = room.gameState;
-            const result = game_manager.applyAction(before, action);
+            const result = transport_game.applyAction(before, action);
             if (!result.legal) break;
             room.gameState = result.gameState; room.seq += 1; iterations += 1;
             io.to(`room:${roomCode}`).emit('game:event', { seq: room.seq, ts: Date.now(), playerId: responderId, action: action.type, summary: buildActionEventSummary(room, action, before) });
@@ -963,7 +964,7 @@ function settlePendingBotDebts(roomCode) {
         const paymentCardIds = selectBotPayableAssetIds(room.gameState, botDebtorId, amountOwed);
 
         const previousGameState = room.gameState;
-        const result = game_manager.applyAction(room.gameState, {
+        const result = transport_game.applyAction(room.gameState, {
             type: 'PAY_RENT',
             playerId: botDebtorId,
             paymentCardIds
@@ -1056,7 +1057,7 @@ function driveBotTurns(roomCode) {
         // state so the planner picks up from the ACTION phase.
         if (gs.turn.phase === 'DRAW' && !gs.turn.hasDrawn) {
             const requiredCount = gs.turn.handSizeAtStartOfTurn === 0 ? 5 : 2;
-            const drawResult = game_manager.applyAction(room.gameState, { type: 'DRAW', playerId: currentPlayerId, count: requiredCount });
+            const drawResult = transport_game.applyAction(room.gameState, { type: 'DRAW', playerId: currentPlayerId, count: requiredCount });
             if (drawResult.legal) {
                 room.gameState = drawResult.gameState;
                 room.seq += 1;
@@ -1081,12 +1082,16 @@ function driveBotTurns(roomCode) {
         if (!plan || !plan.steps || plan.steps.length === 0) break;
 
         let appliedAny = false;
+        const plannedTurnNumber = room.gameState.turnNumber;
         for (const step of plan.steps) {
+            // Auto-end may rotate before a planner's trailing END_TURN or
+            // discard step. Never replay that stale tail on another turn.
+            if (room.gameState.turnNumber !== plannedTurnNumber || room.gameState.turn.playerId !== currentPlayerId) break;
             const action = botStepToAction(step, currentPlayerId);
             if (!action) continue;
 
             const previousGameState = room.gameState;
-            const result = game_manager.applyAction(room.gameState, action);
+            const result = transport_game.applyAction(room.gameState, action);
             if (!result.legal) continue;
 
             room.gameState = result.gameState;
@@ -1269,7 +1274,7 @@ io.on('connection', function(socket) {
 
         // Auto-draw initial turn cards
         const firstPlayerId = room.gameState.turn.playerId;
-        const drawResult = game_manager.applyAction(room.gameState, {
+        const drawResult = transport_game.applyAction(room.gameState, {
             type: 'DRAW',
             playerId: firstPlayerId,
             count: 2
@@ -1378,7 +1383,7 @@ io.on('connection', function(socket) {
 
         const previousGameState = room.gameState;
         let result;
-        try { result = game_manager.applyAction(room.gameState, action); }
+        try { result = transport_game.applyAction(room.gameState, action); }
         catch { return socket.emit('game:action-rejected', { reason: 'Malformed action' }); }
         if (!result.legal) {
             return socket.emit('game:action-rejected', { reason: result.reason || 'Illegal action' });

@@ -8,7 +8,7 @@ import {
   STACK_SIZE,
   type DealDetail,
 } from '../utils/shuffleEngine';
-import { recognizeTouchDealSwipe, cardFlightEngine } from '../utils/cardFlightEngine';
+import { recognizeTouchDealSwipe } from '../utils/cardFlightEngine';
 
 export interface DeckStackViewProps {
   remaining: number;
@@ -72,7 +72,6 @@ export const DeckStackView: React.FC<DeckStackViewProps> = React.memo(({
     touchStartRef.current = null;
 
     if (gesture.isSwipe && canDraw) {
-      cardFlightEngine.launchDealSequence(1, 2);
       onDraw();
     }
   };

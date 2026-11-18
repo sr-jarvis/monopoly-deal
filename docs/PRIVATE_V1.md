@@ -7,10 +7,11 @@ Owner: Forge. Purpose: standard manual-complete two-to-five-player personal LAN 
 1. On the home network open http://10.10.40.112:18080 on each person's device. Use separate browsers/profiles (one private seat per browser profile).
 2. The youngest player creates a room, enters a name, and shares the four-character code. The other enters their name/code and joins. Creator starts. Seats run clockwise in join order; supports 2–5 players.
 3. Tap a hand card to bank it, place a property or choose an action/target. Property cards never bank. Select an existing property group or a new same-color set. Wild cards can move between legal groups on your turn without using a play.
-4. Start each later turn with Draw 2 (Draw 5 only when empty at the start). Play zero to three cards, then End Turn. If over seven, select and discard extras.
+4. The server automatically draws two when your turn begins (five only if empty at the start). Play up to three cards; the third play ends your turn automatically after all responses/payments and any required discards. Use End Turn to finish early. If over seven, select and discard extras.
 5. Actions targeting you open a response dialog. Accept or play a held Just Say No; the opponent may counter or pass. Other actions wait. For debts, select your bank/property/building cards; no hand payment or change. If insolvent, select all payable assets; zero-value rainbow wilds stay yours.
 6. Three completed DIFFERENT colors wins immediately after any pending action is accepted. Use the win dialog's new-game/rematch control to return both players to the lobby.
-7. Refresh/reconnect automatically resumes the same seat and hand. Keep the private session token in this browser; do not share browser storage. Tokens expire after 24h without reconnect. A second tab takes over that profile's seat; use another profile for another player.
+7. Settings holds audio/music, animation speed and leaderboard controls. Replay is available after the match, not during play. Each opponent’s property row scrolls independently; two-color wilds face their chosen public color. Draw animations use actual server draw counts, with only card backs visible to opponents.
+8. Refresh/reconnect automatically resumes the same seat and hand. Keep the private session token in this browser; do not share browser storage. Tokens expire after 24h without reconnect. A second tab takes over that profile's seat; use another profile for another player.
 
 ## Rules and limitations
 

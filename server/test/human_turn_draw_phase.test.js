@@ -21,11 +21,11 @@ describe('Human turn draw phase', function () {
         server.close(done);
     });
 
-    it('returns a human player to DRAW and accepts the client-projected mandatory draw after a bot turn', function (done) {
+    it('returns a human player with the mandatory draw already applied after a bot turn', function (done) {
         const port = server.address().port;
         let roomStarted = false;
         let endedInitialTurn = false;
-        let drewOnSecondTurn = false;
+
         let finished = false;
         let settledPendingSeq = null;
 
@@ -77,19 +77,18 @@ describe('Human turn draw phase', function () {
                 return;
             }
 
-            if (!drewOnSecondTurn) {
-                assert.strictEqual(state.turnPhase, 'DRAW');
-                assert.strictEqual(state.drawCount, 2);
-                drewOnSecondTurn = true;
-                client.emit('game:action', { type: 'DRAW', count: state.drawCount });
-                return;
-            }
-
-            if (drewOnSecondTurn && !finished) {
+            if (!finished) {
                 try {
                     assert.strictEqual(state.currentTurnPlayerId, state.self.id);
                     assert.strictEqual(state.turnPhase, 'ACTION');
                     assert.strictEqual(state.drawCount, null);
+                    assert.strictEqual(state.turnNumber, 3);
+                    assert.deepStrictEqual(state.drawEvents.at(-1), {
+                        id: state.drawEvents.at(-1).id,
+                        playerId: state.self.id,
+                        count: 2,
+                        kind: 'DRAW'
+                    });
                     finished = true;
                     done();
                 } catch (error) {

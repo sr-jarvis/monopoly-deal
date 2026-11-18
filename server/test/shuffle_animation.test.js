@@ -208,17 +208,18 @@ describe('index.css keyframe tokens', () => {
 });
 
 describe('view integration', () => {
-  it('GameBoardView mounts the overlay and exposes a Shuffle Deck button', () => {
+  it('GameBoardView uses one event renderer and never offers a fake deck shuffle', () => {
     const source = readSource('components/GameBoardView.tsx');
-    assert.match(source, /ShuffleAnimationOverlay/);
-    assert.match(source, /triggerShuffle\(/);
-    assert.ok(source.includes('Shuffle'), 'action bar must offer a Shuffle Deck button');
+    assert.ok(source.includes('<DrawSequenceOverlay />'));
+    assert.ok(!source.includes('triggerShuffle('));
+    assert.ok(!source.includes('Shuffle draw deck'));
   });
 
-  it('LobbyView shuffles on game setup and on rematch', () => {
+  it('LobbyView starts the real match without independently launching a visual deal', () => {
     const source = readSource('components/LobbyView.tsx');
-    assert.match(source, /triggerShuffle\(/);
-    assert.ok(source.includes("'game-setup'"), 'missing game-setup shuffle');
+    assert.ok(source.includes("socketService.emit('room:start'"));
+    assert.ok(!source.includes('triggerShuffle('));
+    assert.ok(!source.includes('emitDealStart('));
   });
 
   it('DeckStackView animates dealt cards from the deal event', () => {

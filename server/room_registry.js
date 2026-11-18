@@ -178,6 +178,9 @@ function toClientView(room, forPlayerId) {
 
     const view = {
         roomCode: room.roomCode,
+        matchId: gs.matchId,
+        turnNumber: gs.turnNumber,
+        drawEvents: (gs.drawEvents || []).map(({ id, playerId, count, kind }) => ({ id, playerId, count, kind })),
         seq: room.seq,
         currentTurnPlayerId: gs.turn ? gs.turn.playerId : '',
         // The client must know when its authoritative turn is waiting on the

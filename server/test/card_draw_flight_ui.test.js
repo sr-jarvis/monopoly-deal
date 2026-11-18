@@ -75,8 +75,8 @@ describe('Monopoly Deal 3D Card Draw Flight & Pass Go Multi-Card Cascade Engine'
     );
 
     assert.ok(deckStackContent.includes('data-deck-stack="true"'), 'DeckStackView marks data-deck-stack');
-    assert.ok(gameBoardContent.includes('CardDrawFlightOverlay'), 'GameBoardView renders CardDrawFlightOverlay');
-    assert.ok(gameBoardContent.includes('createCardDrawCascadePlan'), 'GameBoardView calls createCardDrawCascadePlan on draw');
+    assert.ok(gameBoardContent.includes('<DrawSequenceOverlay />'), 'Authoritative draw metadata drives one renderer');
+    assert.ok(!gameBoardContent.includes('createCardDrawCascadePlan'), 'No manual draw cascade competes with server events');
   });
 
   it('evaluates cubic Bezier 3D curve interpolation logic', function () {

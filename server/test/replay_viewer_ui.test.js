@@ -139,7 +139,7 @@ describe('Match Replay & Tactical Telemetry Viewer Contract & Integration Tests'
 
     const boardCode = readClientFile('components/GameBoardView.tsx');
     assert.ok(boardCode.includes('ReplayViewerModal'));
-    assert.ok(boardCode.includes('🎬 Replay'));
+    assert.ok(boardCode.includes('onReplay={gameOver ?'), 'Replay is exposed only after game over');
   });
 
   it('GET /api/monopoly/rooms/UNKNOWN/replay returns 404', function(done) {

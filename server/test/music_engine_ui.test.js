@@ -39,7 +39,9 @@ describe('WebAudio Ambient Music Synthesizer Engine & UI Contracts', function ()
     assert.ok(lobbyContent.includes('<MusicPlayerControls'), 'LobbyView must render MusicPlayerControls');
 
     const gameBoardContent = fs.readFileSync(gameBoardPath, 'utf8');
-    assert.ok(gameBoardContent.includes("import { MusicPlayerControls } from './MusicPlayerControls'"), 'GameBoardView must import MusicPlayerControls');
-    assert.ok(gameBoardContent.includes('<MusicPlayerControls compact />'), 'GameBoardView must render compact MusicPlayerControls');
+    assert.ok(gameBoardContent.includes('<GameSettings '), 'GameBoardView must expose dedicated settings');
+    const settingsContent = fs.readFileSync(path.join(componentsDir, 'GameSettings.tsx'), 'utf8');
+    assert.ok(settingsContent.includes("import { MusicPlayerControls } from './MusicPlayerControls'"), 'Settings must import MusicPlayerControls');
+    assert.ok(settingsContent.includes('<MusicPlayerControls compact />'), 'Settings keeps compact music controls accessible');
   });
 });

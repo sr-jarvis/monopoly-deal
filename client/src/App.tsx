@@ -5,6 +5,7 @@ import { LobbyView } from './components/LobbyView';
 import { GameBoardView } from './components/GameBoardView';
 import { RoomState, GameClientState, GameEventPayload, GameOverPayload } from '@monopoly-deal/shared';
 import * as sfx from './utils/soundEngine';
+import { drawPresentation } from './utils/drawPresentation';
 
 export function App() {
   const {
@@ -26,13 +27,15 @@ export function App() {
     const socket = socketService.connect();
 
     socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('disconnect', () => { setConnected(false); drawPresentation.disconnect(); });
 
     socket.on('room:state', (data: RoomState) => {
+      if (data.status === 'LOBBY') drawPresentation.witnessLobby();
       setRoomState(data);
     });
 
-    socket.on('game:state', (data: GameClientState) => {
+    socket.on('game:state', (data: GameClientState | null) => {
+      if (data) drawPresentation.receive(data);
       setGameState(data);
     });
 
@@ -86,7 +89,7 @@ export function App() {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`p-3 rounded-xl border shadow-2xl text-xs font-semibold backdrop-blur-md pointer-events-auto transition-all ${
+            className={`p-3 rounded-xl border shadow-2xl text-xs font-semibold backdrop-blur-md pointer-events-none transition-all ${
               toast.type === 'error'
                 ? 'bg-rose-950/90 border-rose-600 text-rose-100'
                 : toast.type === 'success'

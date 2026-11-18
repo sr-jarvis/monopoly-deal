@@ -4,12 +4,7 @@ import { socketService } from '../net/socket';
 import { LeaderboardModal } from './LeaderboardModal';
 import { ReplayViewerModal } from './ReplayViewerModal';
 import { MusicPlayerControls } from './MusicPlayerControls';
-import { CardFlightOverlay } from './CardFlightOverlay';
-import { CardDealFlightOverlay } from './CardDealFlightOverlay';
-import { CardShuffleFlightOverlay } from './CardShuffleFlightOverlay';
-import { cardFlightEngine } from '../utils/cardFlightEngine';
-import { scheduleInitialDealCascade, emitDealStart } from '../utils/cardDealFlightEngine';
-import { triggerShuffle } from '../utils/shuffleEngine';
+
 import { BOT_DIFFICULTIES } from '@monopoly-deal/shared';
 
 export const LobbyView: React.FC = () => {
@@ -47,20 +42,6 @@ export const LobbyView: React.FC = () => {
   };
 
   const handleStartGame = () => {
-    triggerShuffle('game-setup');
-    const seats = roomState?.seats || [];
-    const seatIds = seats.map((s) => s.playerId);
-    if (seatIds.length > 0) {
-      const plan = scheduleInitialDealCascade({
-        seatIds,
-        humanSeatId: localStorage.getItem('md_player_id') || seatIds[0],
-      });
-      if (plan.flights.length > 0) {
-        emitDealStart(plan);
-      }
-    } else {
-      cardFlightEngine.launchDealSequence(5, 2);
-    }
     socketService.emit('room:start', {});
   };
 
@@ -239,9 +220,6 @@ export const LobbyView: React.FC = () => {
 
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
       <ReplayViewerModal isOpen={showReplay} onClose={() => setShowReplay(false)} />
-      <CardFlightOverlay />
-      <CardDealFlightOverlay />
-      <CardShuffleFlightOverlay />
     </div>
   );
 };

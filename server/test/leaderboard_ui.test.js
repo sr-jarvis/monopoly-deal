@@ -311,7 +311,7 @@ describe('Tournament Leaderboard & League Standings Modal (UI contracts)', funct
         const source = readClientFile(relPath);
         assert.ok(source.includes('LeaderboardModal'), `${relPath} must render LeaderboardModal`);
         assert.ok(source.includes('setShowLeaderboard'), `${relPath} must toggle leaderboard state`);
-        assert.ok(source.includes('🏆'), `${relPath} must render the 🏆 leaderboard affordance`);
+        assert.ok(source.includes('🏆') || source.includes('<GameSettings onLeaderboard='), `${relPath} must expose leaderboard directly or via settings`);
       });
     });
 

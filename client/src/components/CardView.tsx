@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { Card, PropertyColor } from '@monopoly-deal/shared';
 import { CardBackView } from './CardBackView';
+import { publicWildcardRotation } from '../utils/publicWildcardOrientation';
 import { setActiveDragPayload, DRAG_MIME_TYPE } from '../utils/dragAndDropEngine';
 import {
   isFlippableCard,
@@ -13,6 +14,7 @@ import {
 
 export interface CardViewProps {
   card: Card;
+  publicPropertyGroup?: string;
   onClick?: () => void;
   onPreview?: () => void;
   selected?: boolean;
@@ -83,6 +85,7 @@ function resolveCardImage(card: Card): string | null {
 
 export const CardView: React.FC<CardViewProps> = ({
   card,
+  publicPropertyGroup,
   onClick,
   onPreview,
   selected,
@@ -252,10 +255,11 @@ export const CardView: React.FC<CardViewProps> = ({
 
   const isDraggable = draggable && !disabled;
 
-  const isFlippable = isFlippableCard(card);
+  const isFlippable = !publicPropertyGroup && !faceDown && isFlippableCard(card);
+  const propertyRotation = faceDown ? 0 : publicWildcardRotation(card, publicPropertyGroup);
   const isFlipped = useSyncExternalStore(
     subscribeFlip,
-    () => (card?.id ? getFlippedState(card.id) : false),
+    () => (isFlippable && card?.id ? getFlippedState(card.id) : false),
     () => false
   );
 
@@ -296,6 +300,7 @@ export const CardView: React.FC<CardViewProps> = ({
       onTouchEnd={isDraggable ? handleTouchEnd : undefined}
       data-draggable-card={isDraggable ? 'true' : 'false'}
       data-flippable-card={isFlippable ? 'true' : 'false'}
+      data-property-rotation={publicPropertyGroup ? propertyRotation : undefined}
       style={targetStyle}
       className={`
         md-card md-perspective md-card-flip-scene relative aspect-[2/3] rounded-xl border-2 shadow-md transition-all duration-200 select-none
@@ -331,6 +336,7 @@ export const CardView: React.FC<CardViewProps> = ({
             <img
               src={imgUrl}
               alt={cardTitle}
+              style={{ transform: `rotate(${propertyRotation}deg)` }}
               onError={() => setImgError(true)}
               className="w-full h-full object-contain p-0.5 rounded-lg bg-slate-950"
             />

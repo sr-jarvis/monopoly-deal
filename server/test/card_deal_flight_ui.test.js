@@ -78,10 +78,10 @@ describe('Monopoly Deal 3D Card Deal Flight & Multi-Seat Initial Deal Animation 
     );
 
     assert.ok(deckStackContent.includes('data-deck-stack="true"'), 'DeckStackView marks data-deck-stack');
-    assert.ok(gameBoardContent.includes('CardDealFlightOverlay'), 'GameBoardView renders CardDealFlightOverlay');
-    assert.ok(gameBoardContent.includes('scheduleInitialDealCascade'), 'GameBoardView calls scheduleInitialDealCascade');
+    assert.ok(gameBoardContent.includes('<DrawSequenceOverlay />'), 'One authoritative event renderer owns initial dealing');
+    assert.ok(!gameBoardContent.includes('scheduleInitialDealCascade'), 'Snapshots cannot infer initial deals');
     assert.ok(gameBoardContent.includes('data-seat-id'), 'GameBoardView attaches data-seat-id');
-    assert.ok(lobbyContent.includes('CardDealFlightOverlay'), 'LobbyView renders CardDealFlightOverlay');
+    assert.ok(!lobbyContent.includes('CardDealFlightOverlay'), 'Lobby must not mount a competing dealer');
   });
 
   it('evaluates 3D quadratic Bezier curve math and control points', function () {
