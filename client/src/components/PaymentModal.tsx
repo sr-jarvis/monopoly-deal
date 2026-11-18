@@ -81,8 +81,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-6 max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-start border-b border-slate-700 pb-3">
+      <div role="dialog" aria-modal="true" aria-label="Payment required" className="min-w-0 bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90dvh] flex flex-col">
+        <div className="flex flex-wrap gap-3 justify-between items-start border-b border-slate-700 pb-3 shrink-0">
           <div>
             <h2 className="text-xl font-black text-rose-400 uppercase tracking-wider flex items-center gap-2">
               <span>💳</span> Payment Required
@@ -103,7 +103,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto space-y-4 pr-1">
           {/* Bank Cards Section */}
           <div>
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex justify-between">

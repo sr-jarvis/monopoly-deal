@@ -164,7 +164,17 @@ export interface PendingActionResponse {
   charge?: boolean;
 }
 
+export interface DrawEvent {
+  id: number;
+  playerId: string;
+  count: number;
+  kind: 'INITIAL' | 'DRAW';
+}
+
 export interface GameClientState {
+  matchId: string;
+  turnNumber: number;
+  drawEvents: DrawEvent[];
   roomCode: string;
   seq: number;
   currentTurnPlayerId: string;

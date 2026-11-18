@@ -58,6 +58,9 @@ export const RentPaymentFlightOverlay: React.FC<RentPaymentFlightOverlayProps> =
     }
   });
 
+  const [controlsTarget, setControlsTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => { setControlsTarget(document.getElementById('md-rent-settings')); }, []);
+
   const [activePlan, setActivePlan] = useState<RentPaymentPlan | null>(null);
   const [announcement, setAnnouncement] = useState<string>('');
 
@@ -301,13 +304,12 @@ export const RentPaymentFlightOverlay: React.FC<RentPaymentFlightOverlayProps> =
         </div>
       )}
 
-      {/* Speed & Mute HUD Pill */}
-      <div
+      {/* Secondary animation controls live in the settings dialog, not on the table. */}
+      {controlsTarget && ReactDOM.createPortal(<div
         className="md-payment-hud"
         style={{
-          position: 'fixed',
-          bottom: '16px',
-          right: '16px',
+          position: 'relative',
+          flexWrap: 'wrap',
           pointerEvents: 'auto',
           zIndex: 9001,
           display: 'flex',
@@ -324,7 +326,7 @@ export const RentPaymentFlightOverlay: React.FC<RentPaymentFlightOverlayProps> =
         <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 600, textTransform: 'uppercase' }}>
           3D Rent
         </span>
-        <div role="radiogroup" aria-label="Flight Speed" style={{ display: 'flex', gap: '4px' }}>
+        <div role="radiogroup" aria-label="Flight Speed" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
           {SPEED_OPTIONS.map((sp) => (
             <button
               key={sp}
@@ -364,7 +366,7 @@ export const RentPaymentFlightOverlay: React.FC<RentPaymentFlightOverlayProps> =
         >
           {muted ? '🔇' : '🔊'}
         </button>
-      </div>
+      </div>, controlsTarget)}
     </div>,
     root
   );

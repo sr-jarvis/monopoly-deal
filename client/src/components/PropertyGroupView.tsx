@@ -186,9 +186,10 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
           >
             <CardView
               card={card}
+              publicPropertyGroup={color}
               size="sm"
               selected={selectedCardId === card.id}
-              onClick={() => onCardClick && onCardClick(card)}
+              onClick={onCardClick ? () => onCardClick(card) : undefined}
               onPreview={onPreviewCard ? () => onPreviewCard(card) : undefined}
             />
           </div>

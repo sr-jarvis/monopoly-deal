@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { CardView } from './CardView';
 import { PropertyGroupView } from './PropertyGroupView';
@@ -11,22 +11,14 @@ import { DiscardModal } from './DiscardModal';
 import { WinModal } from './WinModal';
 import { LeaderboardModal } from './LeaderboardModal';
 import { ReplayViewerModal } from './ReplayViewerModal';
-import { MusicPlayerControls } from './MusicPlayerControls';
-import { ShuffleAnimationOverlay } from './ShuffleAnimationOverlay';
-import { CardFlightOverlay } from './CardFlightOverlay';
 import { CardPlayFlightOverlay } from './CardPlayFlightOverlay';
 import { ActionTargetFlightOverlay } from './ActionTargetFlightOverlay';
-import { CardDrawFlightOverlay } from './CardDrawFlightOverlay';
-import { CardDealFlightOverlay } from './CardDealFlightOverlay';
 import { CardDiscardFlightOverlay } from './CardDiscardFlightOverlay';
-import { CardShuffleFlightOverlay } from './CardShuffleFlightOverlay';
 import { JustSayNoFlightOverlay } from './JustSayNoFlightOverlay';
 import { RentPaymentFlightOverlay } from './RentPaymentFlightOverlay';
-import { createCardDrawCascadePlan, dispatchDrawFlightStart } from '../utils/cardDrawFlightEngine';
-import { scheduleInitialDealCascade, emitDealStart } from '../utils/cardDealFlightEngine';
-import { cardFlightEngine } from '../utils/cardFlightEngine';
+import { DrawSequenceOverlay } from './DrawSequenceOverlay';
 import { launchActionTargetFlight, kindFromActionCard, SeatPosition } from '../utils/actionTargetFlightEngine';
-import { triggerShuffle } from '../utils/shuffleEngine';
+import { GameSettings } from './GameSettings';
 import { EventFeed } from './EventFeed';
 import { ActionToastBanner } from './ActionToastBanner';
 import { HandToolbar } from './HandToolbar';
@@ -58,66 +50,7 @@ export const GameBoardView: React.FC = () => {
   const [isBankDragOver, setIsBankDragOver] = useState(false);
   const [isActionDragOver, setIsActionDragOver] = useState(false);
 
-  // Animation Orchestration State
-  const [dealingIds, setDealingIds] = useState<Map<string, number>>(new Map());
-  const seenHandIds = useRef<Set<string>>(new Set());
-
-  const muted = useSyncExternalStore(sfx.subscribeMute, sfx.isMuted, () => true);
-
-  // Detect and stagger deal animations when new cards enter hand
-  useEffect(() => {
-    if (!gameState) return;
-    const currentHand = gameState.self.hand || [];
-    const incoming = currentHand.filter((card) => !seenHandIds.current.has(card.id));
-
-    if (incoming.length > 0) {
-      const newDealingMap = new Map<string, number>();
-      incoming.forEach((card, idx) => {
-        newDealingMap.set(card.id, idx);
-      });
-      setDealingIds(newDealingMap);
-
-      // Background tab timeout safety fallback to ensure dealingIds clear
-      const timeoutMs = 420 + incoming.length * 70 + 150;
-      const timer = setTimeout(() => {
-        setDealingIds(new Map());
-      }, timeoutMs);
-
-      seenHandIds.current = new Set(currentHand.map((c) => c.id));
-      return () => clearTimeout(timer);
-    }
-
-    seenHandIds.current = new Set(currentHand.map((c) => c.id));
-  }, [gameState?.self.hand]);
-
-  // Initial Game Deal Animation Trigger
-  const dealStartedRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!gameState) return;
-    const matchKey = `${roomCode || 'game'}:${gameState.turnPhase || 'start'}:${gameState.self.hand?.length || 0}`;
-    if (dealStartedRef.current.has(matchKey)) return;
-
-    if (gameState.self.hand && gameState.self.hand.length >= 5) {
-      dealStartedRef.current.add(matchKey);
-      const seatIds = [gameState.self.id, ...gameState.opponents.map((op) => op.id)];
-      const plan = scheduleInitialDealCascade({
-        seatIds,
-        humanSeatId: gameState.self.id,
-      });
-      if (plan.flights.length > 0) {
-        emitDealStart(plan);
-      }
-    }
-  }, [gameState, roomCode]);
-
   if (!gameState) return null;
-
-  const handleToggleMute = () => {
-    const isNowMuted = sfx.toggleMute();
-    if (!isNowMuted) {
-      sfx.playToast();
-    }
-  };
 
   const handleSortChange = (mode: HandSortMode) => {
     setSortMode(mode);
@@ -359,34 +292,6 @@ export const GameBoardView: React.FC = () => {
     };
   }, []);
 
-  const handleDraw = () => {
-    if (!isDrawPhase || waitingForPayment) return;
-    sfx.playCardDraw();
-
-    // Trigger 3D Card Draw Flight Cascade animation
-    try {
-      const deckEl = document.querySelector('[data-deck-stack="true"]');
-      const handEl = document.querySelector('.md-hand-container') || document.querySelector('[data-hand-container="true"]');
-      if (deckEl && handEl) {
-        const deckRect = deckEl.getBoundingClientRect();
-        const handRect = handEl.getBoundingClientRect();
-        const drawCount = gameState?.drawCount || 2;
-        const cardsToDraw = Array.from({ length: drawCount }, (_, i) => ({
-          label: `CARD ${i + 1}`,
-          color: null,
-        }));
-        const ghosts = createCardDrawCascadePlan('standard-draw', cardsToDraw, deckRect, handRect);
-        dispatchDrawFlightStart(`draw-${Date.now()}`, 'standard-draw', ghosts);
-      }
-    } catch {
-      // Non-blocking animation calculation fallback
-    }
-
-    const seatCount = (gameState.opponents?.length || 0) + 1;
-    cardFlightEngine.launchDealSequence(2, seatCount);
-    socketService.emit('game:action', { type: 'DRAW', count: gameState.drawCount || 2 });
-  };
-
   const handleEndTurn = () => {
     if (!isMyTurn || isDiscardPhase || waitingForPayment) return;
     socketService.emit('game:action', { type: 'END_TURN' });
@@ -420,83 +325,12 @@ export const GameBoardView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 min-w-0">
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            aria-label="Open tournament leaderboard"
-            title="Tournament Leaderboard & League Standings"
-            className="rounded-lg border border-amber-500/40 bg-amber-950/60 px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-300 transition hover:bg-amber-900/60"
-          >
-            🏆 Leaderboard
-          </button>
-
-          <button
-            onClick={() => setShowReplay(true)}
-            aria-label="Open match replay viewer"
-            title="Match Replay & Tactical Telemetry"
-            className="rounded-lg border border-sky-500/40 bg-sky-950/60 px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-sky-300 transition hover:bg-sky-900/60"
-          >
-            🎬 Replay
-          </button>
-
-          <button
-            onClick={() => triggerShuffle('manual')}
-            aria-label="Shuffle draw deck"
-            title="Shuffle Draw Deck Visual FX"
-            className="rounded-lg border border-purple-500/40 bg-purple-950/60 px-2.5 py-1.5 text-xs font-bold uppercase tracking-wider text-purple-300 transition hover:bg-purple-900/60"
-          >
-            🔀 Shuffle
-          </button>
-
-          {/* Mute Toggle Button */}
-          <button
-            onClick={handleToggleMute}
-            aria-label={muted ? 'Unmute Audio' : 'Mute Audio'}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition"
-            title={muted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
-          >
-            {muted ? '🔇' : '🔊'}
-          </button>
-
-          {/* WebAudio Music Controls */}
-          <MusicPlayerControls compact />
-
-          <div className="text-xs font-bold px-3 py-1 rounded-full bg-slate-800 border border-slate-700">
-            {isMyTurn ? (
-              <span className="text-emerald-400 animate-pulse">YOUR TURN</span>
-            ) : (
-              <span className="text-slate-400">
-                {gameState.opponents.find((o) => o.id === gameState.currentTurnPlayerId)?.displayName || 'OPPONENT'}'S TURN
-              </span>
-            )}
-          </div>
-
-          <div className="text-xs text-slate-400">
-            Actions remaining: <span className="font-bold text-slate-200">{gameState.actionCountRemaining}</span> / 3
-          </div>
-        </div>
-
-        <div>
-          {isDrawPhase ? (
-            <button
-              onClick={handleDraw}
-              disabled={waitingForPayment}
-              title={waitingForPayment ? waitingForPaymentMessage : undefined}
-              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition text-xs shadow-md shadow-sky-900/40 uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Draw {gameState.drawCount} Cards
-            </button>
-          ) : isMyTurn && !isDiscardPhase && (
-            <button
-              onClick={handleEndTurn}
-              disabled={waitingForPayment}
-              title={waitingForPayment ? waitingForPaymentMessage : undefined}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg transition text-xs shadow-md shadow-rose-900/40 uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              End Turn
-            </button>
-          )}
-        </div>
+        <GameSettings onLeaderboard={() => setShowLeaderboard(true)} onReplay={gameOver ? () => setShowReplay(true) : undefined} />
+      </div>
+      <div role="status" aria-label="Turn status" className="md-turn-status">
+        <strong>{isMyTurn ? 'YOUR TURN' : `${gameState.opponents.find(o => o.id === gameState.currentTurnPlayerId)?.displayName || 'Opponent'}'s turn`}</strong>
+        <span>Actions: {gameState.actionCountRemaining} / 3</span>
+        {isMyTurn && !isDrawPhase && !isDiscardPhase && !gameOver && <button onClick={handleEndTurn} disabled={waitingForPayment || selfOwesPayment}>End Turn</button>}
       </div>
 
       {waitingForPayment && (
@@ -508,9 +342,9 @@ export const GameBoardView: React.FC = () => {
       {/* Main Playfield Grid */}
       <div className="flex-1 grid grid-rows-[auto_1fr_auto] gap-3 md:gap-4 min-h-0 min-w-0">
         {/* Opponents Area */}
-        <div className="bg-slate-800/40 border border-slate-700/60 p-3 rounded-xl overflow-x-auto flex gap-4 items-center shrink-0">
+        <div className="md-opponents bg-slate-800/40 border border-slate-700/60 p-3 rounded-xl">
           {gameState.opponents.map((opp) => (
-            <div key={opp.id} data-seat-id={opp.id} className="min-w-[220px] p-3 bg-slate-900/80 rounded-xl border border-slate-700/80 text-xs shadow-md">
+            <div key={opp.id} data-seat-id={opp.id} className="md-opponent p-3 bg-slate-900/80 rounded-xl border border-slate-700/80 text-xs shadow-md">
               <div className="font-extrabold text-slate-200 flex justify-between mb-2 pb-1 border-b border-slate-800">
                 <span className="flex items-center gap-1.5">
                   <span>{opp.displayName}</span>
@@ -520,7 +354,7 @@ export const GameBoardView: React.FC = () => {
                     </span>
                   )}
                 </span>
-                <span className="text-sky-400 font-mono">{opp.handCount} in hand</span>
+                <span data-draw-hand={opp.id} className="text-sky-400 font-mono">{opp.handCount} in hand</span>
               </div>
 
               <div className="space-y-2">
@@ -529,7 +363,7 @@ export const GameBoardView: React.FC = () => {
                 </div>
 
                 {/* Opponent Property Mini Sets */}
-                <div className="flex gap-2 overflow-x-auto py-1">
+                <div className="md-opponent-properties flex gap-2 overflow-x-auto py-1" tabIndex={0} aria-label={`${opp.displayName} property sets`}>
                   {Object.entries(opp.properties).map(([color, cards]) =>
                     cards && (cards.length > 0 || opp.buildings?.[color as PropertyColor]?.houseCard || opp.buildings?.[color as PropertyColor]?.hotelCard) ? (
                       <PropertyGroupView
@@ -552,7 +386,7 @@ export const GameBoardView: React.FC = () => {
         </div>
 
         {/* Center Field: Draw Pile, Discard Pile / Action Drop Zone & Property Board */}
-        <div className="min-h-[260px] md:min-h-0 flex flex-col md:flex-row justify-between items-center bg-slate-800/20 border border-slate-800 rounded-xl p-4 gap-6 overflow-y-auto">
+        <div className="min-w-0 min-h-[260px] md:min-h-0 flex flex-col md:flex-row justify-between items-center bg-slate-800/20 border border-slate-800 rounded-xl p-4 gap-6 overflow-y-auto">
           {/* Deck Piles & Center Action Drop Zone */}
           <div
             data-drop-zone="ACTION"
@@ -579,7 +413,7 @@ export const GameBoardView: React.FC = () => {
             }}
             onDragLeave={() => setIsActionDragOver(false)}
             onDrop={handleDropToCenterAction}
-            className={`flex items-center gap-6 shrink-0 p-3 rounded-xl border transition-all duration-200 ${
+            className={`flex items-center gap-3 sm:gap-6 shrink-0 p-1 sm:p-3 rounded-xl border transition-all duration-200 ${
               isActionDragOver
                 ? 'border-amber-400 ring-2 ring-amber-400/60 bg-amber-950/40 scale-105 z-30'
                 : 'border-transparent'
@@ -588,8 +422,8 @@ export const GameBoardView: React.FC = () => {
             <DeckStackView
               remaining={gameState.drawPileCount}
               isDrawPhase={isDrawPhase}
-              canDraw={!waitingForPayment && isDrawPhase}
-              onDraw={handleDraw}
+              canDraw={false}
+              onDraw={() => { /* Server draws automatically. */ }}
             />
             <div className="text-center" data-discard-pile="true">
               <div className="w-24 h-36 bg-slate-900 border-2 border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-500 font-bold p-2 shadow-inner">
@@ -601,7 +435,7 @@ export const GameBoardView: React.FC = () => {
           </div>
 
           {/* Self Property Board View */}
-          <div className="flex-1 w-full overflow-x-auto">
+          <div className="flex-1 min-w-0 w-full overflow-x-auto">
             <div className="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
               <span>Your Property Sets</span>
               <span className="text-slate-500 font-normal text-[9px]">(Drag cards onto set to place)</span>
@@ -682,7 +516,7 @@ export const GameBoardView: React.FC = () => {
               </span>
             ) : isDrawPhase ? (
               <span className="text-[10px] text-sky-400 font-semibold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800">
-                Draw {gameState.drawCount} card{gameState.drawCount === 1 ? '' : 's'} to begin
+                Drawing cards automatically…
               </span>
             ) : isMyTurn && !isDiscardPhase && (
               <span className="text-[10px] text-sky-400 font-semibold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800">
@@ -703,15 +537,13 @@ export const GameBoardView: React.FC = () => {
           />
 
           {/* Inline Hand Cards Container */}
-          <div className="flex gap-2 overflow-x-auto pb-2 pt-1 items-center min-h-[150px] transition-all">
+          <div data-draw-hand={gameState.self.id} className="min-w-0 flex gap-2 overflow-x-auto pb-2 pt-1 items-center min-h-[150px] transition-all">
             {displayedHand.length === 0 ? (
               <div className="text-slate-500 text-xs italic py-8 px-4 w-full text-center">
                 {showPlayableOnly ? 'No cards in hand are currently playable.' : 'Your hand is empty.'}
               </div>
             ) : (
               displayedHand.map((card, idx) => {
-                const isDealing = dealingIds.has(card.id);
-                const dealIdx = dealingIds.get(card.id) ?? 0;
 
                 return (
                   <CardView
@@ -720,8 +552,6 @@ export const GameBoardView: React.FC = () => {
                     onClick={() => handleCardClick(card)}
                     onPreview={() => handlePreviewCard(card)}
                     selected={activeCard?.id === card.id}
-                    animation={isDealing ? 'deal' : null}
-                    dealIndex={dealIdx}
                     draggable={isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment && !selfOwesPayment && !gameOver && gameState.actionCountRemaining > 0}
                     sourceZone="HAND"
                     index={idx}
@@ -738,15 +568,6 @@ export const GameBoardView: React.FC = () => {
                       else if (target.kind === 'ACTION') processPayloadDropToCenterAction(payload);
                       else if (target.kind === 'PROPERTY' && target.targetColor) handleDropPropertyCard(payload.card, target.targetColor);
                     })}
-                    onAnimationComplete={(kind) => {
-                      if (kind === 'deal') {
-                        setDealingIds((prev) => {
-                          const next = new Map(prev);
-                          next.delete(card.id);
-                          return next;
-                        });
-                      }
-                    }}
                   />
                 );
               })
@@ -849,7 +670,7 @@ export const GameBoardView: React.FC = () => {
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
 
       {/* Match Replay Viewer Modal */}
-      {showReplay && (
+      {showReplay && gameOver && (
         <ReplayViewerModal
           isOpen={showReplay}
           onClose={() => setShowReplay(false)}
@@ -858,15 +679,11 @@ export const GameBoardView: React.FC = () => {
       )}
 
       {/* Fullscreen 3D Card Shuffle & Deal Visual FX Overlay */}
-      <ShuffleAnimationOverlay />
-      <CardShuffleFlightOverlay />
+      <DrawSequenceOverlay />
       <JustSayNoFlightOverlay />
       <RentPaymentFlightOverlay />
-      <CardFlightOverlay />
       <CardPlayFlightOverlay />
       <ActionTargetFlightOverlay />
-      <CardDrawFlightOverlay />
-      <CardDealFlightOverlay />
       <CardDiscardFlightOverlay />
     </div>
   );

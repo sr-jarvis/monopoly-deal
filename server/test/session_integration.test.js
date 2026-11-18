@@ -48,11 +48,15 @@ describe('Human session and complete-match transport', function() {
         room.gameState.players[idA].hand = props;
         room.gameState.players[idB].hand = [];
         room.gameState.turn = { playerId: idA, phase: 'ACTION', playsMade: 0, hasDrawn: true, handSizeAtStartOfTurn: 6 };
-        async function act(s, action) { const update = once(s, 'game:state'); s.emit('game:action', action); return update; }
+        async function act(s, action) { const seq = room.seq; const update = once(s, 'game:state', state => state.seq > seq); s.emit('game:action', action); return update; }
         for (const card of props.slice(0,3)) await act(resumedSocket, { type: 'PLAY_CARD', cardId: card.id, targetZone: 'properties', propertyColor: card.color || card.type });
-        await act(resumedSocket, { type: 'END_TURN' });
-        await act(b.s, { type: 'DRAW', count: 5 }); await act(b.s, { type: 'END_TURN' });
-        await act(resumedSocket, { type: 'DRAW', count: 2 });
+        // Third play automatically ends A's turn and draws B's empty-start five.
+        assert.strictEqual(room.gameState.turn.playerId, idB);
+        assert.strictEqual(room.gameState.turn.phase, 'ACTION');
+        assert.strictEqual(room.gameState.players[idB].hand.length, 5);
+        await act(b.s, { type: 'END_TURN' });
+        assert.strictEqual(room.gameState.turn.playerId, idA);
+        assert.strictEqual(room.gameState.turn.phase, 'ACTION');
         let over = once(resumedSocket, 'game:over');
         for (const card of props.slice(3)) await act(resumedSocket, { type: 'PLAY_CARD', cardId: card.id, targetZone: 'properties', propertyColor: card.color || card.type });
         assert.strictEqual((await over).winnerId, idA);
