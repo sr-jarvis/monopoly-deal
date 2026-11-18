@@ -194,7 +194,8 @@ describe('rules_validator', function() {
                     eligibleResponderIds: ['p1']
                 }
             });
-            const action = { type: ACTION_TYPES.JUST_SAY_NO, playerId: 'p1' };
+            state.players.p1.hand.push({id: 'jsn', kind: 'ACTION', title: 'Just Say No', value: 4});
+            const action = { type: ACTION_TYPES.JUST_SAY_NO, playerId: 'p1', cardId: 'jsn' };
             const result = validateJustSayNoAction(state, action);
             assert.strictEqual(result.legal, true);
             assert.strictEqual(result.countsTowardPlayLimit, false);

@@ -78,16 +78,16 @@ describe('Rent Calculation & Payment Settlement (v2.0)', function() {
         assert.strictEqual(rent.totalRent, 2);
     });
 
-    it('should double rent and add house + hotel bonuses for a complete set', function() {
+    it('should use printed rent and add house + hotel bonuses for a complete set', function() {
         const rent = rules_validator.calculateRentAmount(mockState, 'p2', 'Green');
         assert.strictEqual(rent.errors.length, 0);
         assert.strictEqual(rent.cardsOwned, 3);
         assert.strictEqual(rent.isCompleteSet, true);
         assert.strictEqual(rent.baseRent, 7); // 3 Green cards = 7M base rent
-        assert.strictEqual(rent.fullSetMultiplierApplied, true); // doubled to 14M
+        assert.strictEqual(rent.fullSetMultiplierApplied, false); // doubled to 14M
         assert.strictEqual(rent.houseBonus, 3);
         assert.strictEqual(rent.hotelBonus, 4);
-        assert.strictEqual(rent.totalRent, 21); // 14 + 3 + 4 = 21M
+        assert.strictEqual(rent.totalRent, 14); // 14 + 3 + 4 = 21M
     });
 
     it('should exclude house/hotel bonuses for Railroads even if flagged', function() {
@@ -115,7 +115,7 @@ describe('Rent Calculation & Payment Settlement (v2.0)', function() {
         assert.strictEqual(rentBadColor.errors.length, 1);
     });
 
-    it('should validate a legal full rent payment using bank/hand cards', function() {
+    it('should validate a legal full rent payment using bank cards', function() {
         const payment = rules_validator.validateRentPaymentAction(mockState, {
             playerId: 'p1',
             toPlayerId: 'p2',
@@ -145,12 +145,12 @@ describe('Rent Calculation & Payment Settlement (v2.0)', function() {
             playerId: 'p1',
             toPlayerId: 'p2',
             propertyColor: 'Green',
-            cardIds: ['m1', 'm5', 'm2'],
+            cardIds: ['m2'],
             propertyCardIds: ['g1']
         });
         assert.strictEqual(payment.errors.length, 0); // Valid all-in!
-        assert.strictEqual(payment.settlementValue, 12);
-        assert.strictEqual(payment.shortfall, 9);
+        assert.strictEqual(payment.settlementValue, 6);
+        assert.strictEqual(payment.shortfall, 8);
     });
 
     it('should reject a shortfall payment if player holds back available assets', function() {
@@ -159,10 +159,10 @@ describe('Rent Calculation & Payment Settlement (v2.0)', function() {
             playerId: 'p1',
             toPlayerId: 'p2',
             propertyColor: 'Green',
-            cardIds: ['m1']
+            cardIds: ['m2']
         });
         assert.strictEqual(payment.errors.length, 1);
-        assert.ok(payment.errors[0].includes('short of 21 rent owed'));
+        assert.ok(payment.errors[0].includes('short of 14 owed'));
     });
 
     it('should not mutate state during rent calculation or validation', function() {

@@ -3,7 +3,7 @@
 const assert = require('assert');
 const ioClient = require('socket.io-client');
 
-const game_manager = require('../game_manager');
+const game_manager = require('./support/accepted_actions');
 const room_registry = require('../room_registry');
 const { ACTION_TYPES, DEBT_COLLECTOR_AMOUNT, BIRTHDAY_AMOUNT } = require('../rules_validator');
 const ActionCard = require('../models/ActionCard');

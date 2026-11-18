@@ -199,6 +199,7 @@ describe('Action Card Rules & Validation (v2.1)', function() {
     });
 
     it('should route Just Say No play', function() {
+        state.players.p1.hand.push({id: 'c_jsn', title: 'Just Say No', kind: 'ACTION', value: 4});
         state.pendingActionResolution = { sourceCard: 'Sly Deal', fromPlayerId: 'p2', eligibleResponderIds: ['p1'] };
         const res = rules.validateActionCardPlay(state, {
             playerId: 'p1',

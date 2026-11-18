@@ -7,6 +7,7 @@
     "client",
     "shared"
   ],
+  "overrides": { "qs": "6.17.1" },
   "scripts": {
     "dev:server": "npm --workspace=server start",
     "dev:client": "npm --workspace=client dev",

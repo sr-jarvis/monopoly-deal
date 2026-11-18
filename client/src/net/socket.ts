@@ -10,10 +10,17 @@ class SocketService {
     console.log('[Socket] Connecting via same-origin proxy');
 
     this.socket = io({
+      auth: { sessionToken: localStorage.getItem('md_session_token') },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+    });
+
+    this.socket.on('session:ready', (data: { sessionToken: string; playerId: string }) => {
+      localStorage.setItem('md_session_token', data.sessionToken);
+      localStorage.setItem('md_player_id', data.playerId);
+      if (this.socket) this.socket.auth = { sessionToken: data.sessionToken };
     });
 
     this.socket.on('connect', () => {

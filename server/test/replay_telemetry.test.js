@@ -64,7 +64,7 @@ describe('Monopoly Deal Game Event Replay & Match Telemetry (v2.3)', function() 
             const cardToPlay = hand[0];
 
             let playAction;
-            if (cardToPlay.type === 'PROPERTY' || cardToPlay.type === 'WILDCARD') {
+            if (cardToPlay.kind === 'PROPERTY' || cardToPlay.kind === 'WILDCARD') {
                 playAction = {
                     type: ACTION_TYPES.PLAY_CARD,
                     playerId: 'p1',

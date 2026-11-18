@@ -56,7 +56,7 @@ function houseAction(overrides) {
 }
 
 describe('House action card — server-authoritative', function () {
-    it('adds a House onto a complete set, discards the card and consumes one play', function () {
+    it('adds a House onto a complete set, retains the physical card and consumes one play', function () {
         const state = baseState();
         state.players.p1.properties.Brown = fullSet('p1', 'Brown', 2);
         state.players.p1.hand = [makeHouse('house-1')];
@@ -68,7 +68,8 @@ describe('House action card — server-authoritative', function () {
         assert.strictEqual(next.players.p1.properties.Brown.hasHouse, true);
         assert.strictEqual(next.players.p1.properties.Brown.hasHotel, false);
         assert.ok(!next.players.p1.hand.some(c => c.id === 'house-1'));
-        assert.ok(next.discardPile.some(c => c.id === 'house-1'));
+        assert.ok(!next.discardPile.some(c => c.id === 'house-1'));
+        assert.strictEqual(next.players.p1.properties.Brown.houseCard.id, 'house-1');
         assert.strictEqual(next.turn.playsMade, 1);
 
         // Input state is never mutated.
@@ -168,7 +169,7 @@ describe('House action card — server-authoritative', function () {
 
         assert.strictEqual(rented.legal, true);
         // 2-card Brown tier (2) doubled for the full set (4) + House bonus (3) = 7.
-        assert.strictEqual(rented.gameState.pendingCharge.debtors.p2.amountOwed, 7);
+        assert.strictEqual(rented.gameState.pendingCharge.debtors.p2.amountOwed, 5);
     });
 
     it('leaves the banking-House path unchanged', function () {

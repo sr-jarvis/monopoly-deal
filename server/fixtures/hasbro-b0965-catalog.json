@@ -1,0 +1,72 @@
+{
+  "edition": "Hasbro Monopoly Deal B0965/E3113 standard deck",
+  "sources": [
+    "https://instructions.hasbro.com/en-us/instruction/monopoly-deal-card-game",
+    "https://instructions.hasbro.com/api/download/B0965_en-us_monopoly-deal-card-game.pdf",
+    "https://instructions.hasbro.com/en-au/instruction/monopoly-deal-card-game",
+    "https://instructions.hasbro.com/api/download/E3113_en-au_monopoly-deal-card-game.pdf"
+  ],
+  "notes": "Hasbro lists 110 cards including 4 Rules cards. The application omits non-playable Rules/reference cards from the draw pile, so the canonical playable deck contains 106 cards.",
+  "referenceCards": {
+    "Rules": 4
+  },
+  "playableTotalCards": 106,
+  "printedTotalCardsIncludingReference": 110,
+  "cardTypeBreakdown": {
+    "action": 34,
+    "property": 28,
+    "wildcard": 11,
+    "rent": 13,
+    "money": 20
+  },
+  "actionTitleCounts": {
+    "Deal Breaker": 2,
+    "Forced Deal": 3,
+    "Sly Deal": 3,
+    "Just Say No": 3,
+    "Debt Collector": 3,
+    "Its My Birthday": 3,
+    "Double The Rent": 2,
+    "House": 3,
+    "Hotel": 2,
+    "Pass Go": 10
+  },
+  "propertyColorCounts": {
+    "Brown": 2,
+    "LightBlue": 3,
+    "Purple": 3,
+    "Orange": 3,
+    "Red": 3,
+    "Yellow": 3,
+    "Green": 3,
+    "DarkBlue": 2,
+    "Railroad": 4,
+    "Utility": 2
+  },
+  "wildcardVariantCounts": {
+    "LightBlue/Brown": 1,
+    "LightBlue/Railroad": 1,
+    "Purple/Orange": 2,
+    "Red/Yellow": 2,
+    "DarkBlue/Green": 1,
+    "Railroad/Green": 1,
+    "Railroad/Utility": 1,
+    "ALL": 2
+  },
+  "rentVariantCounts": {
+    "DarkBlue/Green": 2,
+    "LightBlue/Brown": 2,
+    "Purple/Orange": 2,
+    "Railroad/Utility": 2,
+    "Red/Yellow": 2,
+    "ALL": 3
+  },
+  "moneyValueCounts": {
+    "1": 6,
+    "2": 5,
+    "3": 3,
+    "4": 3,
+    "5": 2,
+    "10": 1
+  }
+}

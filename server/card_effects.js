@@ -123,10 +123,11 @@ function isRentCard(card) {
 }
 
 function getRentSpec(card) {
-    if (!isRentCard(card) || !Array.isArray(card.types) || card.types.length === 0) return null;
+    const colors = card && (Array.isArray(card.types) ? card.types : card.colors);
+    if (!isRentCard(card) || !Array.isArray(colors) || colors.length === 0) return null;
     return {
-        colors: card.types.slice(),
-        targeting: card.types.length > 2 ? TARGETING.SINGLE_OPPONENT : TARGETING.ALL_OPPONENTS
+        colors: colors.slice(),
+        targeting: colors.length > 2 ? TARGETING.SINGLE_OPPONENT : TARGETING.ALL_OPPONENTS
     };
 }
 

@@ -29,7 +29,7 @@ var HAND_LIMIT = 7;
 var MAX_PLAYS_PER_TURN = 3;
 var NORMAL_DRAW_COUNT = 2;
 var EMPTY_HAND_DRAW_COUNT = 5;
-var FULL_SET_RENT_MULTIPLIER = 2;
+var FULL_SET_RENT_MULTIPLIER = 1;
 var HOUSE_RENT_BONUS = 3;
 var HOTEL_RENT_BONUS = 4;
 var HOUSE_HOTEL_EXCLUDED_COLORS = ['Railroad', 'Utility'];
@@ -45,7 +45,8 @@ var ACTION_TYPES = Object.freeze({
     DRAW: 'DRAW',
     PLAY_CARD: 'PLAY_CARD',       // money/property/action card played from hand
     PLAY_ACTION_CARD: 'PLAY_ACTION_CARD', // action card played with targeted/unique rules
-    JUST_SAY_NO: 'JUST_SAY_NO',   // may be played in- or out-of-turn to block
+    JUST_SAY_NO: 'JUST_SAY_NO',   // in- or out-of-turn response
+    ACCEPT_ACTION: 'ACCEPT_ACTION', // explicitly accept or decline to counter
     REARRANGE: 'REARRANGE',       // reorganizing own board, e.g. wildcard color
     DISCARD: 'DISCARD',           // end-of-turn discard down to hand limit
     END_TURN: 'END_TURN',
@@ -206,6 +207,9 @@ function validateJustSayNoAction(state, action) {
     if (pending.eligibleResponderIds.indexOf(action.playerId) === -1) {
         return illegal('Player is not an eligible target of the pending action card.');
     }
+    var player = state.players && state.players[action.playerId];
+    var card = player && (player.hand || []).find(c => c.id === action.cardId && c.title === 'Just Say No' && c.kind === 'ACTION');
+    if (!card) return illegal('Just Say No must be held in your hand.');
     // Just Say No may be played in- or out-of-turn and never counts toward
     // the 3-play limit.
     return legal({ countsTowardPlayLimit: false });
@@ -217,7 +221,7 @@ function validateRearrangeAction(state, action) {
     if (action.playerId !== turn.playerId) {
         return illegal('Only the current player may rearrange their own board.');
     }
-    if (turn.phase !== PHASES.ACTION && turn.phase !== PHASES.DISCARD) {
+    if (![PHASES.DRAW, PHASES.ACTION, PHASES.DISCARD].includes(turn.phase)) {
         return illegal('Rearranging is only allowed during your own turn.');
     }
     // Rearranging (e.g. reassigning a wildcard's color) never counts toward
@@ -240,7 +244,7 @@ function validatePlayCardAction(state, action) {
     // A Rent played atomically with Double The Rent (action.doubleRentCardId)
     // is a single play that costs two toward the per-turn limit; every other
     // play costs one. Pre-increment check, so no off-by-one.
-    var playCost = action.doubleRentCardId ? 2 : 1;
+    var playCost = 1 + (action.doubleRentCardIds ? action.doubleRentCardIds.length : action.doubleRentCardId ? 1 : 0);
     if (turn.playsMade + playCost > MAX_PLAYS_PER_TURN) {
         return illegal('Play limit of ' + MAX_PLAYS_PER_TURN + ' cards per turn has been reached.');
     }
@@ -309,21 +313,30 @@ function validateAction(state, action) {
     if (!action || !action.type) {
         return illegal('Action is missing a type.');
     }
+    if (!state.players || !state.players[action.playerId]) return illegal('Unknown player.');
+    if (state.pendingActionResolution && !['JUST_SAY_NO', 'ACCEPT_ACTION'].includes(action.type)) return illegal('A pending action must be resolved first.');
     // Double The Rent is represented only as an optional companion card on the
     // atomic PLAY_ACTION_CARD Rent path. Presence (not truthiness) matters: a
     // malformed empty/non-string companion must not slip through as an ordinary
     // action and cannot affect turn structure.
+    if (Object.prototype.hasOwnProperty.call(action, 'doubleRentCardIds') &&
+        (action.type !== ACTION_TYPES.PLAY_ACTION_CARD || action.doubleRentCardId !== undefined ||
+        !Array.isArray(action.doubleRentCardIds) || ![1,2].includes(action.doubleRentCardIds.length) ||
+        action.doubleRentCardIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        new Set(action.doubleRentCardIds).size !== action.doubleRentCardIds.length)) return illegal('Double The Rent requires one or two distinct companion card IDs.');
     var hasDoubleRentCardId = Object.prototype.hasOwnProperty.call(action, 'doubleRentCardId');
     if (hasDoubleRentCardId && (action.type !== ACTION_TYPES.PLAY_ACTION_CARD ||
         typeof action.doubleRentCardId !== 'string' || action.doubleRentCardId.trim() === '')) {
         return illegal('Double The Rent may only be used with a Rent action and requires a card ID.');
     }
-    if (hasOutstandingPendingCharge(state) && action.type !== ACTION_TYPES.PAY_RENT) {
+    if (hasOutstandingPendingCharge(state) && ![ACTION_TYPES.PAY_RENT, ACTION_TYPES.JUST_SAY_NO, ACTION_TYPES.ACCEPT_ACTION].includes(action.type)) {
         return illegal('A pending payment is outstanding; it must be resolved with PAY_RENT before any other action.');
     }
     switch (action.type) {
         case ACTION_TYPES.DRAW:
             return validateDrawAction(state, action);
+        case ACTION_TYPES.ACCEPT_ACTION:
+            return state.pendingActionResolution && state.pendingActionResolution.eligibleResponderIds.includes(action.playerId) ? legal() : illegal('Not your response.');
         case ACTION_TYPES.JUST_SAY_NO:
             return validateJustSayNoAction(state, action);
         case ACTION_TYPES.REARRANGE:
@@ -375,7 +388,7 @@ function applyValidatedAction(state, action) {
         case ACTION_TYPES.PLAY_ACTION_CARD:
             // Rent + Double The Rent is one action that consumes two plays; see
             // validatePlayCardAction. Every other play consumes one.
-            nextTurn.playsMade = nextTurn.playsMade + (action.doubleRentCardId ? 2 : 1);
+            nextTurn.playsMade += 1 + (action.doubleRentCardIds ? action.doubleRentCardIds.length : action.doubleRentCardId ? 1 : 0);
             break;
         case ACTION_TYPES.JUST_SAY_NO:
         case ACTION_TYPES.REARRANGE:
@@ -426,11 +439,11 @@ function validatePropertyPlacementAction(state, action) {
     }
 
     if (action.propertyColor) {
-        if (!COMPLETE_SET_SIZE[action.propertyColor]) {
+        if (!COMPLETE_SET_SIZE[propertyGroupColor(action.propertyColor)]) {
             errors.push('Invalid property color: ' + action.propertyColor);
-        } else if (card.type && card.type !== action.propertyColor) {
+        } else if (card.type && card.type !== propertyGroupColor(action.propertyColor)) {
             errors.push('Property card color ' + card.type + ' does not match target set ' + action.propertyColor);
-        } else if (card.types && Array.isArray(card.types) && card.types.length === 2 && !card.types.includes(action.propertyColor)) {
+        } else if (card.types && Array.isArray(card.types) && card.types.length === 2 && !card.types.includes(propertyGroupColor(action.propertyColor))) {
             errors.push('Wildcard ' + (card.name || card.title || 'wildcard') + ' is not eligible for color ' + action.propertyColor);
         }
     }
@@ -448,7 +461,7 @@ function validateBankZoneEligibility(state, action) {
         return { errors: ['Card ' + action.cardId + ' is not in player hand.'] };
     }
 
-    if (card.type || (card.types && !card.action)) {
+    if (card.kind ? ['PROPERTY', 'WILDCARD'].includes(card.kind) : (card.type || (card.types && !card.action))) {
         errors.push('Standard property and property wildcards cannot be banked as money.');
     }
 
@@ -586,23 +599,23 @@ function calculateRentAmount(state, ownerId, propertyColor) {
     if (!owner) {
         return { errors: ['Unknown player: ' + ownerId] };
     }
-    if (!COMPLETE_SET_SIZE[propertyColor]) {
+    if (!COMPLETE_SET_SIZE[propertyGroupColor(propertyColor)]) {
         return { errors: ['Invalid property color: ' + propertyColor] };
     }
 
     var group = (owner.properties && owner.properties[propertyColor]) || { cards: [], hasHouse: false, hasHotel: false };
     var cardsOwned = group.cards ? group.cards.length : 0;
-    var setSize = COMPLETE_SET_SIZE[propertyColor];
+    var setSize = COMPLETE_SET_SIZE[propertyGroupColor(propertyColor)];
     var isCompleteSet = cardsOwned >= setSize;
 
-    var tiers = (RENT_TIERS && RENT_TIERS[propertyColor]) || [];
+    var tiers = (RENT_TIERS && RENT_TIERS[propertyGroupColor(propertyColor)]) || [];
     var tierIndex = Math.min(cardsOwned, tiers.length) - 1;
     var baseRent = tierIndex >= 0 ? tiers[tierIndex] : 0;
 
-    var fullSetMultiplierApplied = isCompleteSet && baseRent > 0;
+    var fullSetMultiplierApplied = false;
     var rentAfterMultiplier = fullSetMultiplierApplied ? baseRent * FULL_SET_RENT_MULTIPLIER : baseRent;
 
-    var eligibleForBonus = HOUSE_HOTEL_EXCLUDED_COLORS.indexOf(propertyColor) === -1 && isCompleteSet;
+    var eligibleForBonus = HOUSE_HOTEL_EXCLUDED_COLORS.indexOf(propertyGroupColor(propertyColor)) === -1 && isCompleteSet;
     var houseBonus = eligibleForBonus && group.hasHouse ? HOUSE_RENT_BONUS : 0;
     var hotelBonus = eligibleForBonus && group.hasHotel ? HOTEL_RENT_BONUS : 0;
 
@@ -636,129 +649,20 @@ function calculateRentAmount(state, ownerId, propertyColor) {
 }
 
 function validateRentPaymentAction(state, action) {
-    var errors = [];
-    if (!state || !state.players) return { errors: ['Invalid state provided'] };
-    if (!action) return { errors: ['Action is required'] };
-
-    var payerId = action.playerId;
-    var toPlayerId = action.toPlayerId;
-    var propertyColor = action.propertyColor;
-
-    if (!payerId) errors.push('Payer playerId is required');
-    if (!toPlayerId) errors.push('Recipient toPlayerId is required');
-    if (payerId && toPlayerId && payerId === toPlayerId) {
-        errors.push('Payer and recipient cannot be the same player');
-    }
-
-    var payer = state.players[payerId];
-    var recipient = state.players[toPlayerId];
-
-    if (!payer) errors.push('Unknown payer player: ' + payerId);
-    if (!recipient) errors.push('Unknown recipient player: ' + toPlayerId);
-
-    var rentAmount = calculateRentAmount(state, toPlayerId, propertyColor);
-    if (rentAmount.errors && rentAmount.errors.length) {
-        errors = errors.concat(rentAmount.errors);
-    } else if (rentAmount.cardsOwned === 0) {
-        errors.push(toPlayerId + ' owns no ' + propertyColor + ' cards; no rent is owed.');
-    }
-
-    if (errors.length > 0) {
-        return { errors: errors, rentAmount: rentAmount, settlementValue: 0, shortfall: rentAmount.totalRent || 0 };
-    }
-
-    var cardIds = action.cardIds || [];
-    var propertyCardIds = action.propertyCardIds || [];
-
-    var settlementValue = 0;
-    var usedCardIds = {};
-
-    for (var i = 0; i < cardIds.length; i++) {
-        var cid = cardIds[i];
-        if (usedCardIds[cid]) {
-            errors.push('Duplicate card ID in payment: ' + cid);
-            continue;
-        }
-        usedCardIds[cid] = true;
-
-        var foundInHand = payer.hand && payer.hand.find(function (c) { return c.id === cid; });
-        var foundInBank = payer.bank && payer.bank.find(function (c) { return c.id === cid; });
-        var card = foundInHand || foundInBank;
-
-        if (!card) {
-            errors.push('Card ' + cid + ' not found in player ' + payerId + ' hand or bank');
-            continue;
-        }
-
-        var cardVal = typeof card.value === 'number' ? card.value : (parseInt(card.value, 10) || 0);
-        settlementValue += cardVal;
-    }
-
-    for (var j = 0; j < propertyCardIds.length; j++) {
-        var pid = propertyCardIds[j];
-        if (usedCardIds[pid]) {
-            errors.push('Duplicate property card ID in payment: ' + pid);
-            continue;
-        }
-        usedCardIds[pid] = true;
-
-        var foundProp = null;
-        if (payer.properties) {
-            Object.keys(payer.properties).forEach(function (col) {
-                var group = payer.properties[col];
-                if (group && group.cards) {
-                    var match = group.cards.find(function (c) { return c.id === pid; });
-                    if (match) foundProp = match;
-                }
-            });
-        }
-
-        if (!foundProp) {
-            errors.push('Property card ' + pid + ' not found in player ' + payerId + ' properties');
-            continue;
-        }
-
-        var propVal = typeof foundProp.value === 'number' ? foundProp.value : (parseInt(foundProp.value, 10) || 0);
-        settlementValue += propVal;
-    }
-
-    var totalRent = rentAmount.totalRent || 0;
-    var shortfall = Math.max(0, totalRent - settlementValue);
-
-    if (shortfall > 0) {
-        var totalAvailable = 0;
-        if (payer.hand) {
-            payer.hand.forEach(function (c) {
-                totalAvailable += typeof c.value === 'number' ? c.value : (parseInt(c.value, 10) || 0);
-            });
-        }
-        if (payer.bank) {
-            payer.bank.forEach(function (c) {
-                totalAvailable += typeof c.value === 'number' ? c.value : (parseInt(c.value, 10) || 0);
-            });
-        }
-        if (payer.properties) {
-            Object.keys(payer.properties).forEach(function (col) {
-                var group = payer.properties[col];
-                if (group && group.cards) {
-                    group.cards.forEach(function (c) {
-                        totalAvailable += typeof c.value === 'number' ? c.value : (parseInt(c.value, 10) || 0);
-                    });
-                }
-            });
-        }
-
-        if (settlementValue < totalAvailable) {
-            errors.push('Payment of ' + settlementValue + ' is short of ' + totalRent + ' rent owed and does not use all available assets.');
-        }
-    }
-
-    return {
-        errors: errors,
-        rentAmount: rentAmount,
-        settlementValue: settlementValue,
-        shortfall: shortfall
-    };
+    if (!state || !state.players || !action) return { errors: ['Invalid state or action provided'] };
+    const rentAmount = calculateRentAmount(state, action.toPlayerId, action.propertyColor);
+    const errors = [...(rentAmount.errors || [])];
+    if (!state.players[action.playerId]) errors.push('Unknown payer');
+    if (action.playerId === action.toPlayerId) errors.push('Payer and recipient cannot be the same player');
+    if (!rentAmount.errors?.length && !rentAmount.cardsOwned) errors.push('Owner owns no properties of that color');
+    if (errors.length) return { errors, rentAmount, settlementValue: 0, shortfall: rentAmount.totalRent || 0 };
+    if ((action.cardIds !== undefined && !Array.isArray(action.cardIds)) ||
+        (action.propertyCardIds !== undefined && !Array.isArray(action.propertyCardIds))) return { errors: ['Payment card IDs must be arrays.'], rentAmount, settlementValue: 0, shortfall: rentAmount.totalRent };
+    const validation = validatePendingChargePaymentAction({ ...state, pendingCharge: {
+        fromPlayerId: action.toPlayerId, debtors: { [action.playerId]: { amountOwed: rentAmount.totalRent } }
+    } }, { ...action, paymentCardIds: [...(action.cardIds || []), ...(action.propertyCardIds || [])] });
+    const settlementValue = validation.settlementValue || 0;
+    return { errors: validation.legal ? [] : [validation.reason], rentAmount, settlementValue, shortfall: Math.max(0, rentAmount.totalRent - settlementValue) };
 }
 
 // ---------------------------------------------------------------------------
@@ -788,6 +692,7 @@ function findPlayerAssetCard(player, cardId) {
         var group = player.properties[color];
         var match = group && group.cards && group.cards.find(function (c) { return c.id === cardId; });
         if (match) found = { card: match, zone: 'properties', color: color };
+        for (const key of ['houseCard', 'hotelCard']) if (group && group[key] && group[key].id === cardId) found = { card: group[key], zone: 'building', color: color };
     });
     return found;
 }
@@ -803,6 +708,8 @@ function sumPlayerAssetsValue(player) {
     Object.keys(player.properties || {}).forEach(function (color) {
         var group = player.properties[color];
         (group && group.cards ? group.cards : []).forEach(addValue);
+        if (group && group.houseCard) addValue(group.houseCard);
+        if (group && group.hotelCard) addValue(group.hotelCard);
     });
     return total;
 }
@@ -844,6 +751,7 @@ function validatePendingChargePaymentAction(state, action) {
         if (!found) {
             return illegal('Payment card ' + cid + ' is not owned by player ' + action.playerId + '.');
         }
+        if (!(found.card.value > 0)) return illegal('Valueless property wildcards cannot be used as payment.');
         settlementValue += typeof found.card.value === 'number' ? found.card.value : (parseInt(found.card.value, 10) || 0);
     }
 
@@ -865,18 +773,32 @@ function isCompletePropertySet(state, playerId, color) {
     var player = state && state.players && state.players[playerId];
     var group = player && player.properties && player.properties[color];
     var cardsOwned = group && group.cards ? group.cards.length : 0;
-    return cardsOwned >= (COMPLETE_SET_SIZE[color] || Infinity);
+    return cardsOwned >= (COMPLETE_SET_SIZE[propertyGroupColor(color)] || Infinity);
+}
+
+// Group identity is not a printed color. Legacy primary keys remain valid.
+function propertyGroupColor(key) {
+    if (typeof key !== 'string') return null;
+    const match = /^([A-Za-z]+)(?:#([2-9]|[1-9][0-9]+))?$/.exec(key);
+    return match && Object.prototype.hasOwnProperty.call(COMPLETE_SET_SIZE, match[1]) ? match[1] : null;
+}
+function nextPropertyGroupKey(properties, color) {
+    const base = propertyGroupColor(color);
+    if (!base) throw new Error('Invalid property group');
+    if (!properties[base]) return base;
+    let index = 2;
+    while (properties[base + '#' + index]) index++;
+    return base + '#' + index;
 }
 
 var WIN_REQUIRED_SET_COUNT = 3;
 
 function checkWinCondition(playerState) {
     var properties = (playerState && playerState.properties) || {};
-    var completedSetColors = Object.keys(COMPLETE_SET_SIZE).filter(function (color) {
-        var group = properties[color];
-        var cardsOwned = group && group.cards ? group.cards.length : 0;
-        return cardsOwned >= COMPLETE_SET_SIZE[color];
-    });
+    var completedSetColors = [...new Set(Object.keys(properties).filter(function (key) {
+        const group = properties[key];
+        return group && group.cards && group.cards.length >= (COMPLETE_SET_SIZE[propertyGroupColor(key)] || Infinity);
+    }).map(propertyGroupColor))];
     var isWinner = completedSetColors.length >= WIN_REQUIRED_SET_COUNT;
     var details = isWinner
         ? 'Player completed ' + completedSetColors.length + ' full sets (' + completedSetColors.join(', ') + ')'
@@ -912,7 +834,7 @@ function validateDealBreakerTarget(state, action) {
 
     if (!action.targetPropertyColor) {
         errors.push('targetPropertyColor is required for Deal Breaker');
-    } else if (!COMPLETE_SET_SIZE[action.targetPropertyColor]) {
+    } else if (!COMPLETE_SET_SIZE[propertyGroupColor(action.targetPropertyColor)]) {
         errors.push('Invalid property color: ' + action.targetPropertyColor);
     } else if (action.targetPlayerId && state.players && state.players[action.targetPlayerId]) {
         if (!isCompletePropertySet(state, action.targetPlayerId, action.targetPropertyColor)) {
@@ -934,7 +856,7 @@ function validateSlyDealTarget(state, action) {
 
     if (!action.targetPropertyColor) {
         errors.push('targetPropertyColor is required for Sly Deal');
-    } else if (!COMPLETE_SET_SIZE[action.targetPropertyColor]) {
+    } else if (!COMPLETE_SET_SIZE[propertyGroupColor(action.targetPropertyColor)]) {
         errors.push('Invalid property color: ' + action.targetPropertyColor);
     }
 
@@ -968,13 +890,13 @@ function validateForcedDealTarget(state, action) {
 
     if (!action.offeredCardId || !action.offeredPropertyColor) {
         errors.push('offeredCardId and offeredPropertyColor are required for Forced Deal');
-    } else if (!COMPLETE_SET_SIZE[action.offeredPropertyColor]) {
+    } else if (!COMPLETE_SET_SIZE[propertyGroupColor(action.offeredPropertyColor)]) {
         errors.push('Invalid offered property color: ' + action.offeredPropertyColor);
     }
 
     if (!action.requestedCardId || !action.requestedPropertyColor) {
         errors.push('requestedCardId and requestedPropertyColor are required for Forced Deal');
-    } else if (!COMPLETE_SET_SIZE[action.requestedPropertyColor]) {
+    } else if (!COMPLETE_SET_SIZE[propertyGroupColor(action.requestedPropertyColor)]) {
         errors.push('Invalid requested property color: ' + action.requestedPropertyColor);
     }
 
@@ -1105,6 +1027,8 @@ function validateActionCardPlay(state, action) {
 // ---------------------------------------------------------------------------
 
 module.exports = {
+    propertyGroupColor,
+    nextPropertyGroupKey,
     HAND_LIMIT: HAND_LIMIT,
     MAX_PLAYS_PER_TURN: MAX_PLAYS_PER_TURN,
     NORMAL_DRAW_COUNT: NORMAL_DRAW_COUNT,

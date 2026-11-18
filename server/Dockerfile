@@ -3,10 +3,15 @@ FROM node:22-alpine
 RUN addgroup -g 1005 pirate && \
     adduser -D -H -u 1004 -G pirate pirate
 
+ARG APP_REVISION=development
+LABEL org.opencontainers.image.revision=$APP_REVISION
+ENV APP_REVISION=$APP_REVISION
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY server/package.json ./server/package.json
 COPY client/package.json ./client/package.json
+COPY shared/package.json ./shared/package.json
 RUN npm ci --omit=dev --workspace=server
 
 COPY server ./server

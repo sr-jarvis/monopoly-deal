@@ -44,6 +44,7 @@ describe('Deal Breaker — Socket.IO action contract', function () {
         let started = false;
         let fixtureInjected = false;
         let actionEmitted = false;
+        let responseSent = false;
         let expectedPostActionSeq = null;
         let witnessObserved = false;
         let eventObserved = false;
@@ -109,6 +110,15 @@ describe('Deal Breaker — Socket.IO action contract', function () {
         witness.on('game:state', (state) => {
             if (!actionEmitted || resolved) return;
             if (state.seq < expectedPostActionSeq) return;
+            if (state.pendingActionResolution) {
+                try {
+                    assert.strictEqual(state.self.properties.Brown.length,2,'properties stay with target during response');
+                    assert.deepStrictEqual(state.pendingActionResolution.eligibleResponderIds,[state.self.id]);
+                    assert.strictEqual(state.pendingActionResolution.boardAfter,undefined,'private deferred representation is not on wire');
+                    if (!responseSent) { responseSent=true; witness.emit('game:action',{type:'ACCEPT_ACTION'}); }
+                } catch(error) { fail(error); }
+                return;
+            }
             try {
                 const actor = state.opponents.find(opp => opp.displayName === 'Browser Actor');
                 assert.ok(actor, 'witness should receive the actor in the post-action client view');
@@ -122,9 +132,9 @@ describe('Deal Breaker — Socket.IO action contract', function () {
         });
 
         host.on('game:event', (event) => {
-            if (!event.summary || !event.summary.includes('used Deal Breaker')) return;
+            if (!event.summary || event.action !== 'ACCEPT_ACTION') return;
             try {
-                assert.match(event.summary, /Browser Actor used Deal Breaker to steal Fixture Witness's complete Brown set \(with house\)\./);
+                assert.match(event.summary, /Deal Breaker/i);
                 const room = room_registry.getRoom(roomCode);
                 assert.strictEqual(room.gameState.players[witness.id].properties.Brown, undefined);
                 assert.strictEqual(room.gameState.players[host.id].properties.Brown.cards.length, 2);

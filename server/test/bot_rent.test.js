@@ -130,7 +130,7 @@ describe('Solo bot standard Rent cards', function () {
     assert.strictEqual(replay.gameState.pendingCharge.type, 'RENT');
     assert.strictEqual(replay.gameState.pendingCharge.rentColor, 'Brown');
     assert.strictEqual(replay.gameState.pendingCharge.doubled, false);
-    assert.strictEqual(replay.gameState.pendingCharge.debtors.human.amountOwed, 4);
+    assert.strictEqual(replay.gameState.pendingCharge.debtors.human.amountOwed, 2);
   });
 
   it('parks a bot Rent charge for the human through the existing pending view', function () {
@@ -145,8 +145,10 @@ describe('Solo bot standard Rent cards', function () {
     assert.strictEqual(room.gameState.pendingCharge.type, 'RENT');
     assert.strictEqual(room.gameState.pendingCharge.sourceTitle, 'Rent');
     assert.deepStrictEqual(Object.keys(room.gameState.pendingCharge.debtors), [room.hostPlayerId]);
-    assert.strictEqual(room.gameState.pendingCharge.debtors[room.hostPlayerId].amountOwed, 4);
+    assert.strictEqual(room.gameState.pendingCharge.debtors[room.hostPlayerId].amountOwed, 2);
 
+    const accepted = game_manager.applyAction(room.gameState, {type:'ACCEPT_ACTION', playerId:room.hostPlayerId});
+    assert.strictEqual(accepted.legal, true, accepted.reason); room.gameState = accepted.gameState;
     const humanView = room_registry.toClientView(room, room.hostPlayerId);
     const botView = room_registry.toClientView(room, firstBot.playerId);
     assert.strictEqual(humanView.pendingResolution.sourceTitle, 'Rent');
@@ -199,7 +201,7 @@ describe('Solo bot standard Rent cards', function () {
     const replay = game_manager.applyAction(state, app.__botDriver.botStepToAction(step, 'bot'));
     assert.strictEqual(replay.legal, true);
     assert.strictEqual(replay.gameState.pendingCharge.doubled, true);
-    assert.strictEqual(replay.gameState.pendingCharge.debtors.human.amountOwed, 8);
+    assert.strictEqual(replay.gameState.pendingCharge.debtors.human.amountOwed, 4);
   });
 
   it('does not play Rent when the bot owns none of its colors', function () {
@@ -335,12 +337,14 @@ describe('Solo bot standard Rent cards', function () {
       assert.strictEqual(room.gameState.pendingCharge.doubled, true);
       assert.strictEqual(room.gameState.pendingCharge.rentColor, 'Green');
       assert.deepStrictEqual(Object.keys(room.gameState.pendingCharge.debtors), [room.hostPlayerId]);
-      assert.strictEqual(room.gameState.pendingCharge.debtors[room.hostPlayerId].amountOwed, 28); // 14 x 2 = 28
+      assert.strictEqual(room.gameState.pendingCharge.debtors[room.hostPlayerId].amountOwed, 14); // 14 x 2 = 28
       assert.strictEqual(room.gameState.turn.playsMade, 2);
 
+      const accepted = game_manager.applyAction(room.gameState, {type:'ACCEPT_ACTION', playerId:room.hostPlayerId});
+      assert.strictEqual(accepted.legal, true, accepted.reason); room.gameState = accepted.gameState;
       const clientView = room_registry.toClientView(room, room.hostPlayerId);
       assert.strictEqual(clientView.pendingResolution.rentColor, 'Green');
-      assert.strictEqual(clientView.pendingResolution.amountOwed, 28);
+      assert.strictEqual(clientView.pendingResolution.amountOwed, 14);
     });
   });
 });

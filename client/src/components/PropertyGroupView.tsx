@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Card, PropertyColor } from '@monopoly-deal/shared';
+import { Card, PropertyColor, propertyGroupColor } from '@monopoly-deal/shared';
 import { CardView } from './CardView';
 import { getActiveDragPayload, isDropEligible } from '../utils/dragAndDropEngine';
 
 interface PropertyGroupViewProps {
-  color: PropertyColor;
+  color: string;
   cards: Card[];
   onCardClick?: (card: Card) => void;
+  onPreviewCard?: (card: Card) => void;
   selectedCardId?: string;
   isCompleteSet?: boolean;
   hasHouse?: boolean;
   hasHotel?: boolean;
-  onDropCard?: (card: Card, targetColor: PropertyColor) => void;
+  houseCard?: Card;
+  hotelCard?: Card;
+  blocked?: boolean;
+  onDropCard?: (card: Card, targetColor: string) => void;
   isMyTurn?: boolean;
   turnPhase?: 'DRAW' | 'ACTION' | 'DISCARD' | 'COMPLETE' | null;
   playsMade?: number;
@@ -49,10 +53,14 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
   color,
   cards,
   onCardClick,
+  onPreviewCard,
   selectedCardId,
   isCompleteSet,
   hasHouse,
   hasHotel,
+  houseCard,
+  hotelCard,
+  blocked = false,
   onDropCard,
   isMyTurn = false,
   turnPhase = 'ACTION',
@@ -60,7 +68,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
-  if (!cards || cards.length === 0) return null;
+  if ((!cards || cards.length === 0) && !houseCard && !hotelCard) return null;
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -74,7 +82,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
         isMyTurn,
         playsMade,
         turnPhase: turnPhase || 'ACTION',
-        waitingForPayment: false,
+        waitingForPayment: blocked,
         selfOwesPayment: false
       }
     );
@@ -104,7 +112,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
         isMyTurn,
         playsMade,
         turnPhase: turnPhase || 'ACTION',
-        waitingForPayment: false,
+        waitingForPayment: blocked,
         selfOwesPayment: false
       }
     );
@@ -130,10 +138,10 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
       {/* Group Header Badge */}
       <div
         className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 border ${
-          COLOR_HEADER_BG[color]
+          COLOR_HEADER_BG[propertyGroupColor(color)]
         } ${isCompleteSet ? 'ring-2 ring-amber-400 animate-pulse' : ''}`}
       >
-        {COLOR_NAMES[color]} ({cards.length})
+        {`${COLOR_NAMES[propertyGroupColor(color)]}${color.includes('#') ? ' #' + color.split('#')[1] : ''}`} ({cards.length})
       </div>
 
       {/* Building Badges */}
@@ -166,6 +174,8 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
         </div>
       )}
 
+      {[houseCard, hotelCard].filter((c): c is Card => !!c).map(card => <CardView key={card.id} card={card} size="sm" onPreview={onPreviewCard ? () => onPreviewCard(card) : undefined} />)}
+
       {/* Vertical Card Stack with Offset Overlap */}
       <div className="relative flex flex-col items-center pb-2">
         {cards.map((card, idx) => (
@@ -179,6 +189,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
               size="sm"
               selected={selectedCardId === card.id}
               onClick={() => onCardClick && onCardClick(card)}
+              onPreview={onPreviewCard ? () => onPreviewCard(card) : undefined}
             />
           </div>
         ))}

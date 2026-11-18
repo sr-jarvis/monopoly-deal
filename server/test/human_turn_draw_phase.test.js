@@ -48,6 +48,13 @@ describe('Human turn draw phase', function () {
             }
         });
         client.on('game:state', (state) => {
+            if (state.pendingActionResolution) {
+                if (state.pendingActionResolution.eligibleResponderIds.includes(state.self.id) && state.seq !== settledPendingSeq) {
+                    settledPendingSeq = state.seq;
+                    client.emit('game:action', {type:'ACCEPT_ACTION'});
+                }
+                return;
+            }
             // A real bot may now raise a supported charge during its turn. Settle
             // the projected human-only PaymentModal contract before waiting for
             // normal turn rotation, just as the browser client does.
@@ -55,7 +62,8 @@ describe('Human turn draw phase', function () {
                 settledPendingSeq = state.seq;
                 const paymentCardIds = [
                     ...(state.self.bank || []).map(card => card.id),
-                    ...Object.values(state.self.properties || {}).flat().map(card => card.id)
+                    ...Object.values(state.self.properties || {}).flat().filter(card => card.value > 0).map(card => card.id),
+                    ...Object.values(state.self.buildings || {}).flatMap(b => [b.houseCard,b.hotelCard].filter(Boolean).map(card => card.id))
                 ];
                 client.emit('game:action', { type: 'PAY_RENT', paymentCardIds });
                 return;

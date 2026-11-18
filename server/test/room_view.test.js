@@ -43,7 +43,7 @@ describe("room_view", () => {
             expect(result[0].currentTurn).to.not.be.null;
             expect(result[0].currentTurn.playerId).to.equal(gameState.turn.playerId);
             expect(result[0].deckCounts).to.not.be.null;
-            expect(result[0].deckCounts.drawPileCount).to.equal(98); // 108 default minus 10 dealt cards (5 each)
+            expect(result[0].deckCounts.drawPileCount).to.equal(96); // 106 playable cards minus 10 dealt cards (5 each)
             expect(result[0].deckCounts.discardPileCount).to.equal(0);
         });
     });

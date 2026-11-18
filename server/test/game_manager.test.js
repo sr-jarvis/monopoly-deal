@@ -23,8 +23,8 @@ describe('game_manager', function() {
             assert.strictEqual(state.players.p1.hand.length, 5);
             assert.strictEqual(state.players.p2.hand.length, 5);
             
-            // 108 cards total - 10 dealt = 98 remaining in draw pile
-            assert.strictEqual(state.drawPile.length, 98);
+            // 106 playable cards total - 10 dealt = 96 remaining in draw pile
+            assert.strictEqual(state.drawPile.length, 96);
             assert.strictEqual(state.discardPile.length, 0);
             
             // Turn initialized for first player in DRAW phase
@@ -35,7 +35,7 @@ describe('game_manager', function() {
         });
 
         it('should throw error if fewer than 2 players are provided', function() {
-            assert.throws(() => createGameState([{ id: 'p1', name: 'Scott' }]), /Cannot start a game with fewer than 2 players/);
+            assert.throws(() => createGameState([{ id: 'p1', name: 'Scott' }]), /2–5 distinct players/);
         });
     });
 
@@ -49,7 +49,7 @@ describe('game_manager', function() {
             
             const nextState = result.gameState;
             assert.strictEqual(nextState.players.p1.hand.length, 7); // 5 initial + 2 drawn
-            assert.strictEqual(nextState.drawPile.length, 96);
+            assert.strictEqual(nextState.drawPile.length, 94);
             assert.strictEqual(nextState.turn.phase, PHASES.ACTION);
             assert.strictEqual(nextState.turn.hasDrawn, true);
         });
@@ -66,7 +66,7 @@ describe('game_manager', function() {
             
             const nextState = result.gameState;
             assert.strictEqual(nextState.players.p1.hand.length, 5);
-            assert.strictEqual(nextState.drawPile.length, 93);
+            assert.strictEqual(nextState.drawPile.length, 91);
             assert.strictEqual(nextState.turn.phase, PHASES.ACTION);
         });
 
@@ -93,7 +93,8 @@ describe('game_manager', function() {
         it('should play money/action card from hand to bank', function() {
             const hand = drawnState.players.p1.hand;
             // Find a card that is money or action (e.g. 5M, 1M, or Deal Breaker)
-            const moneyCard = hand[0];
+            const moneyCard = { id: 'cash-test', kind: 'MONEY', value: 5 };
+            hand[0] = moneyCard;
             const action = {
                 type: ACTION_TYPES.PLAY_CARD,
                 playerId: 'p1',
@@ -151,6 +152,7 @@ describe('game_manager', function() {
 
         it('should reject play if action limit (3 plays) is exceeded', function() {
             let activeState = drawnState;
+            activeState.players.p1.hand = [0, 1, 2, 3].map(i => ({id: 'cash-'+i, kind: 'MONEY', value: 1}));
             // Play 3 cards
             for (let i = 0; i < 3; i++) {
                 const card = activeState.players.p1.hand[0];
@@ -265,7 +267,7 @@ describe('game_manager', function() {
 
             // drawPile is hidden, but drawPileCount exists
             assert.strictEqual(clientViewForP1.drawPile, undefined);
-            assert.strictEqual(clientViewForP1.drawPileCount, 98);
+            assert.strictEqual(clientViewForP1.drawPileCount, 96);
         });
     });
 });

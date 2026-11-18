@@ -188,7 +188,6 @@ function selectSlyDealPlay(state, playerId) {
   if (!slyCard) return null;
 
   const turnOrder = state.turnOrder || Object.keys(state.players || {});
-  const setSizeKeys = Object.keys(rules_validator.COMPLETE_SET_SIZE);
 
   let best = null;
 
@@ -198,9 +197,10 @@ function selectSlyDealPlay(state, playerId) {
     const opp = state.players && state.players[oppId];
     if (!opp || !opp.properties) continue;
 
+    const setSizeKeys = orderedGroupKeys(opp.properties);
     for (let colorIdx = 0; colorIdx < setSizeKeys.length; colorIdx++) {
       const color = setSizeKeys[colorIdx];
-      const targetSize = rules_validator.COMPLETE_SET_SIZE[color];
+      const targetSize = rules_validator.COMPLETE_SET_SIZE[rules_validator.propertyGroupColor(color)];
       const group = opp.properties[color];
       if (!group || !Array.isArray(group.cards) || group.cards.length === 0) continue;
 
@@ -292,8 +292,8 @@ function selectBuildingCardPlay(state, playerId) {
 
   if (houseCard) {
     for (const [color, group] of Object.entries(properties)) {
-      if (!group || excluded.includes(color)) continue;
-      const targetSize = rules_validator.COMPLETE_SET_SIZE[color];
+      if (!group || excluded.includes(rules_validator.propertyGroupColor(color))) continue;
+      const targetSize = rules_validator.COMPLETE_SET_SIZE[rules_validator.propertyGroupColor(color)];
       if (!targetSize) continue;
       const cardsOwned = Array.isArray(group.cards) ? group.cards.length : 0;
       if (cardsOwned >= targetSize && !group.hasHouse) {
@@ -312,8 +312,8 @@ function selectBuildingCardPlay(state, playerId) {
 
   if (hotelCard) {
     for (const [color, group] of Object.entries(properties)) {
-      if (!group || excluded.includes(color)) continue;
-      const targetSize = rules_validator.COMPLETE_SET_SIZE[color];
+      if (!group || excluded.includes(rules_validator.propertyGroupColor(color))) continue;
+      const targetSize = rules_validator.COMPLETE_SET_SIZE[rules_validator.propertyGroupColor(color)];
       if (!targetSize) continue;
       const cardsOwned = Array.isArray(group.cards) ? group.cards.length : 0;
       if (cardsOwned >= targetSize && group.hasHouse && !group.hasHotel) {
@@ -375,8 +375,8 @@ function compareWildRentTargets(a, b) {
 // highest rent total. Ties break lexicographically by color name (localeCompare).
 function bestOwnedRentColor(state, playerId, allowedColors) {
   let best = null;
-  for (const color of allowedColors) {
-    if (!rules_validator.COMPLETE_SET_SIZE[color]) continue;
+  for (const color of Object.keys(state.players[playerId].properties || {}).filter(key => allowedColors.includes(rules_validator.propertyGroupColor(key)))) {
+    if (!rules_validator.COMPLETE_SET_SIZE[rules_validator.propertyGroupColor(color)]) continue;
     const rent = rules_validator.calculateRentAmount(state, playerId, color);
     if (rent.errors && rent.errors.length) continue;
     if (!(rent.totalRent > 0)) continue;
@@ -460,6 +460,9 @@ function selectRentCardPlay(state, playerId) {
 }
 
 const COLOR_ORDER = Object.keys(rules_validator.COMPLETE_SET_SIZE);
+function orderedGroupKeys(properties) {
+  return Object.keys(properties || {}).filter(key => rules_validator.propertyGroupColor(key)).sort((a,b) => COLOR_ORDER.indexOf(rules_validator.propertyGroupColor(a)) - COLOR_ORDER.indexOf(rules_validator.propertyGroupColor(b)) || a.localeCompare(b));
+}
 
 function groupCards(state, playerId, color) {
   const g = state.players && state.players[playerId] && state.players[playerId].properties && state.players[playerId].properties[color];
@@ -500,11 +503,12 @@ function selectDealBreakerPlay(state, playerId) {
 
   for (let oppIdx = 0; oppIdx < opps.length; oppIdx++) {
     const oppId = opps[oppIdx];
-    for (let colorIdx = 0; colorIdx < COLOR_ORDER.length; colorIdx++) {
-      const color = COLOR_ORDER[colorIdx];
+    const groups = orderedGroupKeys(state.players[oppId].properties);
+    for (let colorIdx = 0; colorIdx < groups.length; colorIdx++) {
+      const color = groups[colorIdx];
       if (!rules_validator.isCompletePropertySet(state, oppId, color)) continue;
 
-      const iAlreadyOwnComplete = rules_validator.isCompletePropertySet(state, playerId, color);
+      const iAlreadyOwnComplete = rules_validator.checkWinCondition(player).completedSetColors.includes(rules_validator.propertyGroupColor(color));
       const netSetGain = iAlreadyOwnComplete ? 0 : 1;
       const winsNow = (myCompleted + netSetGain) >= rules_validator.WIN_REQUIRED_SET_COUNT;
 
@@ -563,8 +567,9 @@ function selectForcedDealPlay(state, playerId) {
   const candidates = [];
   const opps = opponentIds(state, playerId);
 
-  for (let offColorIdx = 0; offColorIdx < COLOR_ORDER.length; offColorIdx++) {
-    const offColor = COLOR_ORDER[offColorIdx];
+  const ownGroups = orderedGroupKeys(player.properties);
+  for (let offColorIdx = 0; offColorIdx < ownGroups.length; offColorIdx++) {
+    const offColor = ownGroups[offColorIdx];
     if (rules_validator.isCompletePropertySet(state, playerId, offColor)) continue;
     const offCards = groupCards(state, playerId, offColor);
     if (offCards.length === 0) continue;
@@ -575,8 +580,9 @@ function selectForcedDealPlay(state, playerId) {
       for (let oppIdx = 0; oppIdx < opps.length; oppIdx++) {
         const oppId = opps[oppIdx];
 
-        for (let reqColorIdx = 0; reqColorIdx < COLOR_ORDER.length; reqColorIdx++) {
-          const reqColor = COLOR_ORDER[reqColorIdx];
+        const opponentGroups = orderedGroupKeys(state.players[oppId].properties);
+        for (let reqColorIdx = 0; reqColorIdx < opponentGroups.length; reqColorIdx++) {
+          const reqColor = opponentGroups[reqColorIdx];
           if (rules_validator.isCompletePropertySet(state, oppId, reqColor)) continue;
           const reqCards = groupCards(state, oppId, reqColor);
           if (reqCards.length === 0) continue;
@@ -635,8 +641,8 @@ function selectForcedDealPlay(state, playerId) {
 }
 
 function scoreForcedDealSwap(state, meId, oppId, { offColor, offCard, reqColor, reqCard, myCompleted }) {
-  const reqTargetSize = rules_validator.COMPLETE_SET_SIZE[reqColor];
-  const offTargetSize = rules_validator.COMPLETE_SET_SIZE[offColor];
+  const reqTargetSize = rules_validator.COMPLETE_SET_SIZE[rules_validator.propertyGroupColor(reqColor)];
+  const offTargetSize = rules_validator.COMPLETE_SET_SIZE[rules_validator.propertyGroupColor(offColor)];
 
   const myReqCards = groupCards(state, meId, reqColor);
   const myOffCards = groupCards(state, meId, offColor);

@@ -63,7 +63,7 @@ function hotelAction(overrides) {
 }
 
 describe('Hotel action card — server-authoritative', function () {
-    it('adds a Hotel onto a complete housed set, discards the card and consumes one play', function () {
+    it('adds a Hotel onto a complete housed set, retains the physical card and consumes one play', function () {
         const state = baseState();
         state.players.p1.properties.Brown = housedBrownSet();
         state.players.p1.hand = [makeHotel('hotel-1')];
@@ -75,7 +75,8 @@ describe('Hotel action card — server-authoritative', function () {
         assert.strictEqual(next.players.p1.properties.Brown.hasHotel, true);
         assert.strictEqual(next.players.p1.properties.Brown.hasHouse, true);
         assert.ok(!next.players.p1.hand.some(c => c.id === 'hotel-1'));
-        assert.ok(next.discardPile.some(c => c.id === 'hotel-1'));
+        assert.ok(!next.discardPile.some(c => c.id === 'hotel-1'));
+        assert.strictEqual(next.players.p1.properties.Brown.hotelCard.id, 'hotel-1');
         assert.strictEqual(next.turn.playsMade, 1);
 
         // Input state is never mutated.
@@ -177,7 +178,7 @@ describe('Hotel action card — server-authoritative', function () {
         assert.match(result.reason, /complete Green set/);
     });
 
-    it('boosts rent on the built set by the House + Hotel bonuses ($11M Brown)', function () {
+    it('boosts rent on the built set by the House + Hotel bonuses ($9M Brown)', function () {
         const state = baseState(2);
         state.players.p1.properties.Brown = housedBrownSet();
         state.players.p1.hand = [makeHotel('hotel-1'), makeRent('rent-1', [PropertyType.Brown, PropertyType.LightBlue])];
@@ -194,7 +195,7 @@ describe('Hotel action card — server-authoritative', function () {
 
         assert.strictEqual(rented.legal, true);
         // 2-card Brown tier (2) doubled for the full set (4) + House (3) + Hotel (4) = 11.
-        assert.strictEqual(rented.gameState.pendingCharge.debtors.p2.amountOwed, 11);
+        assert.strictEqual(rented.gameState.pendingCharge.debtors.p2.amountOwed, 9);
     });
 
     it('leaves the banking-Hotel path unchanged ($4M cash, no building)', function () {

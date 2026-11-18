@@ -53,7 +53,7 @@ export const LobbyView: React.FC = () => {
     if (seatIds.length > 0) {
       const plan = scheduleInitialDealCascade({
         seatIds,
-        humanSeatId: socketService.getSocket()?.id || seatIds[0],
+        humanSeatId: localStorage.getItem('md_player_id') || seatIds[0],
       });
       if (plan.flights.length > 0) {
         emitDealStart(plan);
@@ -68,7 +68,7 @@ export const LobbyView: React.FC = () => {
     socketService.emit('room:add-bot', { difficulty: botDifficulty });
   };
 
-  const isHost = !!roomState && roomState.hostPlayerId === socketService.getSocket().id;
+  const isHost = !!roomState && roomState.hostPlayerId === localStorage.getItem('md_player_id');
   const hasBot = !!roomState?.seats.some((seat) => seat.isBot);
   const isFull = !!roomState && roomState.seats.length >= 5;
   const canAddBot = isHost && roomState?.status === 'LOBBY' && !isFull && !hasBot;
@@ -189,7 +189,7 @@ export const LobbyView: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    {seat.playerId === socketService.getSocket().id && (
+                    {seat.playerId === localStorage.getItem('md_player_id') && (
                       <span className="text-slate-400 font-normal">( You )</span>
                     )}
                   </div>

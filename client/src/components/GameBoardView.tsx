@@ -4,7 +4,9 @@ import { CardView } from './CardView';
 import { PropertyGroupView } from './PropertyGroupView';
 import { ActionChoiceModal } from './ActionChoiceModal';
 import { RearrangeWildcardModal } from './RearrangeWildcardModal';
+import { CardPreviewModal } from './CardPreviewModal';
 import { PaymentModal } from './PaymentModal';
+import { ResponseDialog } from './ResponseDialog';
 import { DiscardModal } from './DiscardModal';
 import { WinModal } from './WinModal';
 import { LeaderboardModal } from './LeaderboardModal';
@@ -45,7 +47,8 @@ import { handleTouchStart, handleTouchMove, handleTouchEnd } from '../utils/touc
 export const GameBoardView: React.FC = () => {
   const { gameState, roomCode, events, gameOver, resetMatch, displayName } = useGameStore();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
-  const [rearrangeTarget, setRearrangeTarget] = useState<{ card: Card; color: PropertyColor } | null>(null);
+  const [previewCard, setPreviewCard] = useState<Card | null>(null);
+  const [rearrangeTarget, setRearrangeTarget] = useState<{ card: Card; color: string } | null>(null);
   const [sortMode, setSortMode] = useState<HandSortMode>(getStoredSortMode);
   const [showPlayableOnly, setShowPlayableOnly] = useState<boolean>(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -128,34 +131,44 @@ export const GameBoardView: React.FC = () => {
   const isMyTurn = gameState.currentTurnPlayerId === gameState.self.id;
   const isDrawPhase = isMyTurn && gameState.turnPhase === 'DRAW';
   const isDiscardPhase = isMyTurn && gameState.turnPhase === 'DISCARD';
+  const pendingResponse = gameState.pendingActionResolution;
   const pendingCharge = gameState.pendingCharge;
   const selfOwesPayment =
     gameState.pendingResolution?.targetPlayerId === gameState.self.id;
-  const waitingForPayment = !!pendingCharge && !selfOwesPayment;
+  const waitingForPayment = !!pendingResponse || (!!pendingCharge && !selfOwesPayment);
   const waitingDebtors = pendingCharge?.debtors
     .map(({ playerId, amountOwed }) => {
       const player = gameState.opponents.find((opponent) => opponent.id === playerId);
       return `${player?.displayName || playerId} ($${amountOwed}M)`;
     })
     .join(', ');
-  const waitingForPaymentMessage = pendingCharge
+  const waitingForPaymentMessage = pendingResponse ? `Waiting for response to ${pendingResponse.sourceTitle}.` : pendingCharge
     ? `Waiting for ${waitingDebtors} to pay ${pendingCharge.sourceTitle}.`
     : '';
 
-  const canRearrange = !pendingCharge && isMyTurn && (gameState.turnPhase === 'ACTION' || gameState.turnPhase === 'DISCARD');
+  const canRearrange = !pendingCharge && !pendingResponse && !gameOver && isMyTurn && ['DRAW', 'ACTION', 'DISCARD'].includes(gameState.turnPhase || '');
 
   const handleCardClick = (card: Card) => {
-    if (!isMyTurn || isDrawPhase || isDiscardPhase || waitingForPayment) return;
+    if (!isMyTurn || isDrawPhase || isDiscardPhase || waitingForPayment || selfOwesPayment || gameOver || gameState.actionCountRemaining <= 0) return;
     setActiveCard(card);
   };
 
-  const handleSelfPropertyCardClick = (color: PropertyColor) => (card: Card) => {
+  const handlePreviewCard = (card: Card) => {
+    setPreviewCard(card);
+  };
+
+  // opponent public property cards are previewable; opponent hidden hand counts stay redacted and are never passed here.
+  const handleOpponentPublicPreviewCard = (card: Card) => {
+    handlePreviewCard(card);
+  };
+
+  const handleSelfPropertyCardClick = (color: string) => (card: Card) => {
     if (!canRearrange) return;
     if ((card.kind || card.type) !== 'WILDCARD') return;
     setRearrangeTarget({ card, color });
   };
 
-  const handleRearrange = (destinationColor: PropertyColor) => {
+  const handleRearrange = (destinationColor: string) => {
     if (!rearrangeTarget) return;
     socketService.emit('game:action', {
       type: 'REARRANGE',
@@ -167,17 +180,18 @@ export const GameBoardView: React.FC = () => {
 
   const handleExecutePlay = (options: {
     targetZone: 'bank' | 'properties' | 'action';
-    propertyColor?: PropertyColor;
+    propertyColor?: string;
     targetPlayerId?: string;
-    targetPropertyColor?: PropertyColor;
+    targetPropertyColor?: string;
     targetCardId?: string;
     offeredCardId?: string;
-    offeredPropertyColor?: PropertyColor;
+    offeredPropertyColor?: string;
     requestedCardId?: string;
-    requestedPropertyColor?: PropertyColor;
+    requestedPropertyColor?: string;
     doubleRentCardId?: string;
+    doubleRentCardIds?: string[];
   }) => {
-    if (!activeCard || waitingForPayment) return;
+    if (!activeCard || waitingForPayment || selfOwesPayment || gameOver || gameState.actionCountRemaining <= 0) return;
 
     socketService.emit('game:action', {
       type: options.targetZone === 'action' ? 'PLAY_ACTION_CARD' : 'PLAY_CARD',
@@ -191,7 +205,8 @@ export const GameBoardView: React.FC = () => {
       offeredPropertyColor: options.offeredPropertyColor,
       requestedCardId: options.requestedCardId,
       requestedPropertyColor: options.requestedPropertyColor,
-      doubleRentCardId: options.doubleRentCardId
+      doubleRentCardId: options.doubleRentCardId,
+      doubleRentCardIds: options.doubleRentCardIds
     });
 
     sfx.playCardPlay();
@@ -258,8 +273,8 @@ export const GameBoardView: React.FC = () => {
     if (payload) processPayloadDropToCenterAction(payload);
   };
 
-  const handleDropPropertyCard = (card: Card, targetColor: PropertyColor) => {
-    if (waitingForPayment) return;
+  const handleDropPropertyCard = (card: Card, targetColor: string) => {
+    if (waitingForPayment || selfOwesPayment || gameOver || !isMyTurn || gameState.turnPhase !== 'ACTION' || gameState.actionCountRemaining <= 0) return;
 
     socketService.emit('game:action', {
       type: 'PLAY_CARD',
@@ -369,7 +384,7 @@ export const GameBoardView: React.FC = () => {
 
     const seatCount = (gameState.opponents?.length || 0) + 1;
     cardFlightEngine.launchDealSequence(2, seatCount);
-    socketService.emit('game:action', { type: 'DRAW' });
+    socketService.emit('game:action', { type: 'DRAW', count: gameState.drawCount || 2 });
   };
 
   const handleEndTurn = () => {
@@ -379,10 +394,7 @@ export const GameBoardView: React.FC = () => {
 
   const handleDiscard = (cardIds: string[]) => {
     if (!isDiscardPhase || waitingForPayment) return;
-    socketService.emit('game:action', {
-      type: 'DISCARD',
-      cardIds
-    });
+    for (const cardId of cardIds) socketService.emit('game:action', { type: 'DISCARD', cardId });
   };
 
   const rawHand = gameState.self.hand || [];
@@ -396,10 +408,10 @@ export const GameBoardView: React.FC = () => {
   const playableCount = isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment ? rawHand.length : 0;
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 p-4 gap-4 overflow-hidden">
+    <div className="min-h-screen md:h-screen w-full flex flex-col bg-slate-950 text-slate-100 p-2 md:p-4 gap-3 md:gap-4 overflow-x-hidden md:overflow-hidden">
       {/* Top Navigation & Status Bar */}
-      <div className="flex justify-between items-center bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl shadow-lg shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-3 justify-between items-center bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl shadow-lg shrink-0">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           <div className="text-sm font-black tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2.5 py-0.5 rounded-lg">
             MONOPOLY DEAL
           </div>
@@ -408,7 +420,7 @@ export const GameBoardView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           <button
             onClick={() => setShowLeaderboard(true)}
             aria-label="Open tournament leaderboard"
@@ -494,7 +506,7 @@ export const GameBoardView: React.FC = () => {
       )}
 
       {/* Main Playfield Grid */}
-      <div className="flex-1 grid grid-rows-[auto_1fr_auto] gap-4 min-h-0">
+      <div className="flex-1 grid grid-rows-[auto_1fr_auto] gap-3 md:gap-4 min-h-0 min-w-0">
         {/* Opponents Area */}
         <div className="bg-slate-800/40 border border-slate-700/60 p-3 rounded-xl overflow-x-auto flex gap-4 items-center shrink-0">
           {gameState.opponents.map((opp) => (
@@ -519,14 +531,17 @@ export const GameBoardView: React.FC = () => {
                 {/* Opponent Property Mini Sets */}
                 <div className="flex gap-2 overflow-x-auto py-1">
                   {Object.entries(opp.properties).map(([color, cards]) =>
-                    cards && cards.length > 0 ? (
+                    cards && (cards.length > 0 || opp.buildings?.[color as PropertyColor]?.houseCard || opp.buildings?.[color as PropertyColor]?.hotelCard) ? (
                       <PropertyGroupView
                         key={color}
                         color={color as PropertyColor}
                         cards={cards}
-                        isCompleteSet={opp.completedSetColors?.includes(color as PropertyColor)}
+                        houseCard={opp.buildings?.[color as PropertyColor]?.houseCard}
+                        hotelCard={opp.buildings?.[color as PropertyColor]?.hotelCard}
+                        isCompleteSet={(opp.completedSetGroups || opp.completedSetColors)?.includes(color)}
                         hasHouse={opp.buildings?.[color as PropertyColor]?.house}
                         hasHotel={opp.buildings?.[color as PropertyColor]?.hotel}
+                        onPreviewCard={handleOpponentPublicPreviewCard}
                       />
                     ) : null
                   )}
@@ -537,7 +552,7 @@ export const GameBoardView: React.FC = () => {
         </div>
 
         {/* Center Field: Draw Pile, Discard Pile / Action Drop Zone & Property Board */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-slate-800/20 border border-slate-800 rounded-xl p-4 gap-6 overflow-y-auto">
+        <div className="min-h-[260px] md:min-h-0 flex flex-col md:flex-row justify-between items-center bg-slate-800/20 border border-slate-800 rounded-xl p-4 gap-6 overflow-y-auto">
           {/* Deck Piles & Center Action Drop Zone */}
           <div
             data-drop-zone="ACTION"
@@ -593,15 +608,19 @@ export const GameBoardView: React.FC = () => {
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 min-h-[140px] items-start">
               {Object.entries(gameState.self.properties).map(([color, cards]) =>
-                cards && cards.length > 0 ? (
+                cards && (cards.length > 0 || gameState.self.buildings?.[color as PropertyColor]?.houseCard || gameState.self.buildings?.[color as PropertyColor]?.hotelCard) ? (
                   <PropertyGroupView
                     key={color}
                     color={color as PropertyColor}
                     cards={cards}
-                    isCompleteSet={gameState.self.completedSetColors?.includes(color as PropertyColor)}
+                    blocked={waitingForPayment || selfOwesPayment || !!gameOver}
+                    houseCard={gameState.self.buildings?.[color as PropertyColor]?.houseCard}
+                    hotelCard={gameState.self.buildings?.[color as PropertyColor]?.hotelCard}
+                    isCompleteSet={(gameState.self.completedSetGroups || gameState.self.completedSetColors)?.includes(color)}
                     hasHouse={gameState.self.buildings?.[color as PropertyColor]?.house}
                     hasHotel={gameState.self.buildings?.[color as PropertyColor]?.hotel}
                     onCardClick={canRearrange ? handleSelfPropertyCardClick(color as PropertyColor) : undefined}
+                    onPreviewCard={handlePreviewCard}
                     selectedCardId={rearrangeTarget?.card.id}
                     onDropCard={handleDropPropertyCard}
                     isMyTurn={isMyTurn}
@@ -616,8 +635,8 @@ export const GameBoardView: React.FC = () => {
 
         {/* Self Bottom Bar: Bank & Hand Drawer */}
         <div data-seat-id={gameState.self.id} className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col gap-3 shrink-0">
-          <div className="flex justify-between items-center">
-            <div className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-3">
+          <div className="flex flex-wrap gap-2 justify-between items-center">
+            <div className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex flex-wrap items-center gap-3">
               <span>Your Hand ({rawHand.length} cards)</span>
 
               {/* Bank Drop Zone Target */}
@@ -699,10 +718,11 @@ export const GameBoardView: React.FC = () => {
                     key={card.id}
                     card={card}
                     onClick={() => handleCardClick(card)}
+                    onPreview={() => handlePreviewCard(card)}
                     selected={activeCard?.id === card.id}
                     animation={isDealing ? 'deal' : null}
                     dealIndex={dealIdx}
-                    draggable={isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment}
+                    draggable={isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment && !selfOwesPayment && !gameOver && gameState.actionCountRemaining > 0}
                     sourceZone="HAND"
                     index={idx}
                     onTouchStartCard={(e, c, i, sz) => handleTouchStart(e, c, i, sz)}
@@ -736,14 +756,22 @@ export const GameBoardView: React.FC = () => {
       </div>
 
       {/* Action Choice Modal */}
-      {activeCard && (
+      {previewCard && (
+        <CardPreviewModal
+          card={previewCard}
+          onClose={() => setPreviewCard(null)}
+        />
+      )}
+
+      {/* Action Choice Modal */}
+      {activeCard && !pendingResponse && !pendingCharge && !gameOver && (
         <ActionChoiceModal
           card={activeCard}
           opponents={gameState.opponents}
           selfProperties={gameState.self.properties}
           selfHand={gameState.self.hand}
           actionCountRemaining={gameState.actionCountRemaining}
-          selfCompletedSetColors={gameState.self.completedSetColors}
+          selfCompletedSetColors={gameState.self.completedSetGroups || gameState.self.completedSetColors}
           selfBuildings={gameState.self.buildings}
           onClose={() => setActiveCard(null)}
           onPlay={handleExecutePlay}
@@ -751,28 +779,34 @@ export const GameBoardView: React.FC = () => {
       )}
 
       {/* Rearrange Wildcard Modal */}
-      {rearrangeTarget && (
+      {rearrangeTarget && canRearrange && (
         <RearrangeWildcardModal
           card={rearrangeTarget.card}
           currentColor={rearrangeTarget.color}
+          properties={gameState.self.properties}
           onClose={() => setRearrangeTarget(null)}
           onRearrange={handleRearrange}
         />
       )}
 
+      {pendingResponse && <ResponseDialog response={pendingResponse} selfId={gameState.self.id} hand={gameState.self.hand}
+        onAccept={() => socketService.emit('game:action', { type: 'ACCEPT_ACTION' })}
+        onCounter={(cardId) => socketService.emit('game:action', { type: 'JUST_SAY_NO', cardId })} />}
+
       {/* Payment Modal */}
-      {selfOwesPayment && gameState.pendingResolution && (
+      {selfOwesPayment && !pendingResponse && gameState.pendingResolution && (
         <PaymentModal
           amountOwed={gameState.pendingResolution.amountOwed || 0}
           bankCards={gameState.self.bank}
           propertyCards={gameState.self.properties}
+          buildings={gameState.self.buildings}
           mySeatId={gameState.self.id}
           chargerSeatId={gameState.pendingResolution.fromPlayerId || gameState.opponents[0]?.id || 'p2'}
           onPay={(assetIds) => {
             sfx.playRentPayment();
             socketService.emit('game:action', {
               type: 'PAY_RENT',
-              assetIds
+              paymentCardIds: assetIds
             });
           }}
         />
@@ -798,7 +832,7 @@ export const GameBoardView: React.FC = () => {
           selfDisplayName={displayName}
           onRematch={() => {
             sfx.playToast();
-            resetMatch();
+            socketService.emit('room:rematch', { roomCode });
           }}
           onLeaveRoom={() => {
             socketService.emit('room:leave');

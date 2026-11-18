@@ -62,6 +62,7 @@ export const useGameStore = create<GameStoreState>((set) => ({
   setRoomState: (roomState) =>
     set({
       roomState,
+      roomCode: roomState?.roomCode || null,
       ...(roomState?.status === 'LOBBY' ? { gameState: null, gameOver: null } : {})
     }),
   setGameState: (gameState) =>

@@ -1,4 +1,4 @@
-import { Card, PropertyColor } from '@monopoly-deal/shared';
+import { Card, propertyGroupColor } from '@monopoly-deal/shared';
 import * as sfx from './soundEngine';
 
 export type DropZoneKind = 'BANK' | 'PROPERTY' | 'ACTION' | 'HAND';
@@ -19,8 +19,37 @@ export interface DragEligibilityContext {
 
 export interface DropZoneTarget {
   kind: DropZoneKind;
-  targetColor?: PropertyColor;
+  targetColor?: string;
   targetIndex?: number;
+}
+
+export type ActionAffordance = 'direct-action' | 'board-upgrade' | 'attach-only' | 'response-only' | 'not-action';
+
+export function getActionAffordance(card: Card): ActionAffordance {
+  const kind = (card.kind || card.type || '').toUpperCase();
+  const title = card.title || card.name || '';
+
+  if (kind === 'RENT') {
+    return 'direct-action';
+  }
+  if (kind !== 'ACTION') {
+    return 'not-action';
+  }
+  if (title === 'Double The Rent') {
+    return 'attach-only';
+  }
+  if (title === 'Just Say No') {
+    return 'response-only';
+  }
+  if (title === 'House' || title === 'Hotel') {
+    return 'board-upgrade';
+  }
+  return 'direct-action';
+}
+
+export function canDropOnCenterAction(card: Card): boolean {
+  const affordance = getActionAffordance(card);
+  return affordance === 'direct-action' || affordance === 'board-upgrade';
 }
 
 export const DRAG_MIME_TYPE = 'application/x-monopoly-deal-card';
@@ -60,18 +89,19 @@ export function isDropEligible(
       // If target color is specified, verify wildcard/property compatibility
       if (target.targetColor && target.targetColor !== 'ALL') {
         if (card.color) {
-          return card.color === target.targetColor;
+          return card.color === propertyGroupColor(target.targetColor);
         }
         if (card.colors && card.colors.length > 0) {
-          return card.colors.includes(target.targetColor);
+          return card.colors.includes(propertyGroupColor(target.targetColor));
         }
       }
       return true;
     }
 
     case 'ACTION': {
-      // Action or Rent cards can be played to the action pile
-      return kind === 'ACTION' || kind === 'RENT';
+      // Only card subtypes that can begin a normal center action should light up the action pile.
+      // Double The Rent is attach-only with a Rent card; Just Say No is response-only.
+      return canDropOnCenterAction(card);
     }
 
     default:

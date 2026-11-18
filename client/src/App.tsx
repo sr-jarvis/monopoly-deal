@@ -99,6 +99,7 @@ export function App() {
         ))}
       </div>
 
+      {!useGameStore.getState().connected && <div role="status" className="p-3 bg-amber-950 text-amber-100">Connecting… Your seat will resume automatically.</div>}
       {/* Main View Router */}
       {!gameState ? <LobbyView /> : <GameBoardView />}
     </div>
