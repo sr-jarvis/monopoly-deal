@@ -340,7 +340,7 @@ export const GameBoardView: React.FC = () => {
       )}
 
       {/* Main Playfield Grid */}
-      <div className="flex-1 grid grid-rows-[auto_1fr_auto] gap-3 md:gap-4 min-h-0 min-w-0">
+      <div className="flex-1 grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto] gap-3 md:gap-4 min-h-0 min-w-0">
         {/* Opponents Area */}
         <div className="md-opponents bg-slate-800/40 border border-slate-700/60 p-3 rounded-xl">
           {gameState.opponents.map((opp) => (

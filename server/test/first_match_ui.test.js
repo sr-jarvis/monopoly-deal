@@ -124,6 +124,10 @@ describe('first match UI refinements',()=>{
    assert.match(hidden,/data-property-rotation="0"/);
   }
  });
+ it('bounds the playfield grid with an explicit zero-minimum column instead of a min-content implicit track',()=>{
+  const board=fs.readFileSync(path.resolve(__dirname,'../../client/src/components/GameBoardView.tsx'),'utf8');
+  assert.ok(board.includes('grid-cols-[minmax(0,1fr)]'),'Native two-seat mobile grid must not inherit hand toolbar min-content width');
+ });
  it('renders settings with a native keyboard-contained dialog and no active-match replay or visual shuffle',()=>{
   const {GameSettings}=load('client/src/components/GameSettings.tsx');
   const active=renderToStaticMarkup(React.createElement(GameSettings,{onLeaderboard:()=>{}}));
