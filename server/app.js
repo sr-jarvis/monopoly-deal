@@ -2,12 +2,33 @@ const express = require("express");
 const app = express();
 var http = require("http").Server(app);
 var io = require("socket.io")(http, {
+    maxHttpBufferSize: 32768,
+    allowRequest: (req, callback) => {
+        const origin = req.headers.origin;
+        if (!origin) return callback(null, true); // non-browser test/native clients
+        try {
+            const allowed = process.env.NODE_ENV === 'production'
+                ? (process.env.ALLOWED_ORIGINS || '').split(',').includes(origin)
+                : new URL(origin).host === req.headers.host;
+            callback(null, allowed);
+        }
+        catch { callback(null, false); }
+    },
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
     }
 });
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(express.json({ limit: '32kb', inflate: false }));
+// The browser game uses sockets. Legacy analytics/admin POSTs can reveal held
+// cards or reset someone else's match; keep them unavailable by default.
+app.use('/api/monopoly', (req, res, next) => {
+    if (req.method === 'DELETE' || (req.method === 'POST' && (req.path.endsWith('/reset') || req.body?.roomId))) return res.status(403).json({ status: 'error', message: 'Use the seated game connection.' });
+    next();
+});
+app.get('/api/monopoly/version', (req, res) => res.json({ revision: process.env.APP_REVISION || 'development' }));
+app.get('/healthz', (req, res) => res.json({ ok: true, revision: process.env.APP_REVISION || 'development' }));
 
 const game_manager = require("./game_manager");
 const room_view = require("./room_view");
@@ -259,14 +280,7 @@ app.get("/api/monopoly/rooms/:id/telemetry", function(req, res) {
 });
 
 app.post("/api/monopoly/rooms/:id/reset", function(req, res) {
-    const roomCode = (req.params.id || '').toUpperCase();
-    const result = room_registry.resetRoom(roomCode);
-    if (result.error) {
-        return res.status(404).json({ status: "error", message: result.error });
-    }
-    io.to(`room:${roomCode}`).emit('room:state', room_registry.toRoomState(result.room));
-    io.to(`room:${roomCode}`).emit('game:event', { type: 'ADMIN_RESET', message: 'Room was reset by admin.' });
-    return res.json({ status: "ok", room: room_registry.toRoomState(result.room) });
+    return res.status(403).json({ status: "error", message: "Use the seated game connection." });
 });
 
 app.delete("/api/monopoly/rooms/:id", function(req, res) {
@@ -793,7 +807,7 @@ function buildActionEventSummary(room, action, previousGameState) {
         if (stolenCard) {
             const targetName = playerDisplayName(room, gs, action.targetPlayerId);
             const stolenTitle = stolenCard.title || stolenCard.name || 'a property';
-            return `${actorName} used Sly Deal to steal ${stolenTitle} (${action.targetPropertyColor}) from ${targetName}.`;
+            return `${actorName} attempted Sly Deal to steal ${stolenTitle} (${action.targetPropertyColor}) from ${targetName}.`;
         }
     }
 
@@ -812,7 +826,7 @@ function buildActionEventSummary(room, action, previousGameState) {
             const targetName = playerDisplayName(room, gs, action.targetPlayerId);
             const offeredTitle = offeredCard.title || offeredCard.name || 'a property';
             const requestedTitle = requestedCard.title || requestedCard.name || 'a property';
-            return `${actorName} used Forced Deal to swap ${offeredTitle} (${action.offeredPropertyColor}) for ${targetName}'s ${requestedTitle} (${action.requestedPropertyColor}).`;
+            return `${actorName} attempted Forced Deal to swap ${offeredTitle} (${action.offeredPropertyColor}) for ${targetName}'s ${requestedTitle} (${action.requestedPropertyColor}).`;
         }
     }
 
@@ -824,7 +838,7 @@ function buildActionEventSummary(room, action, previousGameState) {
             const targetName = playerDisplayName(room, gs, action.targetPlayerId);
             const buildings = [priorGroup.hasHouse && 'house', priorGroup.hasHotel && 'hotel'].filter(Boolean);
             const buildingSuffix = buildings.length ? ` (with ${buildings.join(' and ')})` : '';
-            return `${actorName} used Deal Breaker to steal ${targetName}'s complete ${action.targetPropertyColor} set${buildingSuffix}.`;
+            return `${actorName} attempted Deal Breaker to steal ${targetName}'s complete ${action.targetPropertyColor} set${buildingSuffix}.`;
         }
     }
 
@@ -835,12 +849,20 @@ function buildActionEventSummary(room, action, previousGameState) {
         return `${actorName} played Pass Go and drew ${drawn} card${drawn === 1 ? '' : 's'}.`;
     }
 
+    if (action.type === 'ACCEPT_ACTION' || action.type === 'JUST_SAY_NO') {
+        const pending = previousGameState.pendingActionResolution;
+        return `${actorName} ${action.type === 'JUST_SAY_NO' ? 'played Just Say No against' : 'accepted the response to'} ${pending?.sourceTitle || 'the action'}.`;
+    }
     if (action.type === 'PAY_RENT') {
         const priorPending = previousGameState.pendingCharge;
         const debtorEntry = priorPending && priorPending.debtors && priorPending.debtors[action.playerId];
         if (priorPending && debtorEntry) {
             const recipientName = playerDisplayName(room, gs, priorPending.fromPlayerId);
-            return `${actorName} paid $${debtorEntry.amountOwed}M to ${recipientName} for ${priorPending.sourceTitle}.`;
+            const ids = action.paymentCardIds || action.cardIds || [];
+            const payer = previousGameState.players[action.playerId];
+            const assets = [...payer.bank, ...Object.values(payer.properties).flatMap(g => [...g.cards, g.houseCard, g.hotelCard].filter(Boolean))];
+            const paid = assets.filter(c => ids.includes(c.id)).reduce((total, c) => total + c.value, 0);
+            return `${actorName} paid $${paid}M to ${recipientName} for ${priorPending.sourceTitle}${paid < debtorEntry.amountOwed ? ' (all payable assets; remaining debt waived)' : ''}.`;
         }
         return `${actorName} settled a pending payment.`;
     }
@@ -878,11 +900,12 @@ function selectBotPayableAssetIds(gameState, playerId, amountOwed) {
     });
     Object.keys(player.properties || {}).forEach(color => {
         const group = player.properties[color] || { cards: [] };
-        (group.cards || []).forEach(card => {
-            candidates.push({ cardId: card.id, value: card.value || 0, zone: 'properties' });
+        [...(group.cards || []), group.houseCard, group.hotelCard].filter(card => card && card.value > 0).forEach(card => {
+            candidates.push({ cardId: card.id, value: card.value, zone: 'properties' });
         });
     });
 
+    candidates.splice(0, candidates.length, ...candidates.filter(c => c.value > 0));
     candidates.sort((a, b) => (a.value - b.value) || a.cardId.localeCompare(b.cardId));
     const selected = [];
     let total = 0;
@@ -903,7 +926,22 @@ function settlePendingBotDebts(roomCode) {
     if (!room || !room.gameState) return;
 
     let iterations = 0;
-    while (room.gameState.pendingCharge && iterations < MAX_BOT_TURN_ITERATIONS) {
+    while ((room.gameState.pendingCharge || room.gameState.pendingActionResolution) && iterations < MAX_BOT_TURN_ITERATIONS) {
+        const response = room.gameState.pendingActionResolution;
+        if (response) {
+            const responderId = response.eligibleResponderIds[0];
+            if (!room.seats.some(s => s.playerId === responderId && s.isBot)) break;
+            // Preserve the existing conservative bot policy; human JSN is fully supported.
+            const action = { type: 'ACCEPT_ACTION', playerId: responderId };
+            const before = room.gameState;
+            const result = game_manager.applyAction(before, action);
+            if (!result.legal) break;
+            room.gameState = result.gameState; room.seq += 1; iterations += 1;
+            io.to(`room:${roomCode}`).emit('game:event', { seq: room.seq, ts: Date.now(), playerId: responderId, action: action.type, summary: buildActionEventSummary(room, action, before) });
+            room.seats.filter(s => !s.isBot).forEach(s => io.to(s.playerId).emit('game:state', room_registry.toClientView(room, s.playerId)));
+            if (emitGameOverIfFinished(room, roomCode)) break;
+            continue;
+        }
         const pending = room.gameState.pendingCharge;
         const botDebtorId = Object.keys(pending.debtors).find(id => {
             const seat = room.seats.find(s => s.playerId === id);
@@ -944,7 +982,7 @@ function settlePendingBotDebts(roomCode) {
             ts: Date.now(),
             playerId: botDebtorId,
             action: 'PAY_RENT',
-            summary: buildActionEventSummary(room, { type: 'PAY_RENT', playerId: botDebtorId }, previousGameState)
+            summary: buildActionEventSummary(room, { type: 'PAY_RENT', playerId: botDebtorId, paymentCardIds }, previousGameState)
         });
 
         room.seats.forEach(s => {
@@ -1065,7 +1103,7 @@ function driveBotTurns(roomCode) {
 
             // A win or a parked charge suspends the rest of the plan: nothing
             // further is legal until the game ends / the charge is settled.
-            if (room.gameState.status === 'FINISHED' || room.gameState.pendingCharge) break;
+            if (room.gameState.status === 'FINISHED' || room.gameState.pendingCharge || room.gameState.pendingActionResolution) break;
         }
 
         room.seats.forEach(s => {
@@ -1084,7 +1122,7 @@ function driveBotTurns(roomCode) {
             break;
         }
 
-        if (rules_validator.hasOutstandingPendingCharge(room.gameState)) {
+        if (room.gameState.pendingActionResolution || rules_validator.hasOutstandingPendingCharge(room.gameState)) {
             room.seats.forEach(s => {
                 if (!s.isBot) io.to(s.playerId).emit('game:state', room_registry.toClientView(room, s.playerId));
             });
@@ -1096,15 +1134,44 @@ function driveBotTurns(roomCode) {
 }
 
 io.on('connection', function(socket) {
-    console.log(`[Socket] Connected: ${socket.id}`);
-    let currentRoomCode = null;
+    let credentials;
+    try { credentials = require('./seat_sessions').acquire(socket.handshake.auth?.sessionToken, socket.id); }
+    catch { socket.disconnect(true); return; }
+    const { token, session } = credentials;
+    const playerId = session.playerId;
+    const priorSocket = session.socketId && io.sockets.sockets.get(session.socketId);
+    if (priorSocket && priorSocket !== socket) priorSocket.disconnect(true);
+    session.socketId = socket.id;
+    socket.join(playerId);
+    let currentRoomCode = session.roomCode;
+    // Bound malformed/automated clients without affecting ordinary play.
+    let windowStart = Date.now(), messageCount = 0;
+    socket.use((packet, next) => {
+        if (Date.now() - windowStart > 10000) { windowStart = Date.now(); messageCount = 0; }
+        if (++messageCount > 100) return next(new Error('Too many messages'));
+        const data = packet[1];
+        if (data !== undefined && (data === null || typeof data !== 'object' || Array.isArray(data))) return next(new Error('Invalid payload'));
+        if (data?.displayName !== undefined && (typeof data.displayName !== 'string' || data.displayName.length > 40)) return next(new Error('Invalid name'));
+        next();
+    });
+    socket.emit('session:ready', { sessionToken: token, playerId });
+    const resumedRoom = currentRoomCode && room_registry.getRoom(currentRoomCode);
+    if (resumedRoom && resumedRoom.seats.some(s => s.playerId === playerId)) {
+        resumedRoom.seats.find(s => s.playerId === playerId).connected = true;
+        socket.join(`room:${currentRoomCode}`);
+        io.to(`room:${currentRoomCode}`).emit('room:state', room_registry.toRoomState(resumedRoom));
+        if (resumedRoom.gameState) {
+            socket.emit('game:state', room_registry.toClientView(resumedRoom, playerId));
+            if (resumedRoom.gameState.status === 'FINISHED') socket.emit('game:over', { winnerId: resumedRoom.gameState.winnerId, details: resumedRoom.gameState.winDetails });
+        }
+    } else { currentRoomCode = null; session.roomCode = null; }
 
     socket.on("disconnect", function() {
-        console.log(`[Socket] Disconnected: ${socket.id}`);
+        console.log(`[Socket] Disconnected: ${playerId}`);
         if (currentRoomCode) {
             const room = room_registry.getRoom(currentRoomCode);
             if (room) {
-                const seat = room.seats.find(s => s.playerId === socket.id);
+                const seat = room.seats.find(s => s.playerId === playerId);
                 if (seat) seat.connected = false;
                 io.to(`room:${currentRoomCode}`).emit('room:state', room_registry.toRoomState(room));
             }
@@ -1115,32 +1182,37 @@ io.on('connection', function(socket) {
 
     // 1. room:create
     socket.on('room:create', function(data) {
+        if (currentRoomCode) return socket.emit('game:action-rejected', { reason: 'Already seated. Use another browser profile for a new seat.' });
         const displayName = data && data.displayName ? data.displayName : 'Host Player';
-        const room = room_registry.createRoom(socket.id, displayName);
+        const room = room_registry.createRoom(playerId, displayName);
         currentRoomCode = room.roomCode;
+        session.roomCode = currentRoomCode;
         socket.join(`room:${room.roomCode}`);
 
-        console.log(`[Room] Created room ${room.roomCode} by ${displayName} (${socket.id})`);
+        console.log(`[Room] Created room ${room.roomCode} by ${displayName} (${playerId})`);
         socket.emit('room:state', room_registry.toRoomState(room));
     });
 
     // 2. room:join
     socket.on('room:join', function(data) {
+        if (currentRoomCode) return socket.emit('game:action-rejected', { reason: 'Already seated in a room' });
         if (!data || !data.roomCode) {
             return socket.emit('game:action-rejected', { reason: 'Room code required' });
         }
+        if (typeof data.roomCode !== 'string' || !/^[A-Z2-9]{4}$/i.test(data.roomCode)) return socket.emit('game:action-rejected', { reason: 'Invalid room code' });
         const roomCode = data.roomCode.toUpperCase();
         const displayName = data.displayName || 'Player';
 
-        const result = room_registry.joinRoom(roomCode, socket.id, displayName);
+        const result = room_registry.joinRoom(roomCode, playerId, displayName);
         if (result.error) {
             return socket.emit('game:action-rejected', { reason: result.error });
         }
 
         currentRoomCode = roomCode;
+        session.roomCode = currentRoomCode;
         socket.join(`room:${roomCode}`);
 
-        console.log(`[Room] Player ${displayName} (${socket.id}) joined room ${roomCode}`);
+        console.log(`[Room] Player ${displayName} (${playerId}) joined room ${roomCode}`);
         io.to(`room:${roomCode}`).emit('room:state', room_registry.toRoomState(result.room));
     });
 
@@ -1152,7 +1224,7 @@ io.on('connection', function(socket) {
         const room = room_registry.getRoom(currentRoomCode);
         if (!room) return socket.emit('game:action-rejected', { reason: 'Room not found' });
 
-        if (room.hostPlayerId !== socket.id) {
+        if (room.hostPlayerId !== playerId) {
             return socket.emit('game:action-rejected', { reason: 'Only host can add a bot' });
         }
         if (room.status !== 'LOBBY') {
@@ -1178,10 +1250,11 @@ io.on('connection', function(socket) {
         const room = room_registry.getRoom(currentRoomCode);
         if (!room) return socket.emit('game:action-rejected', { reason: 'Room not found' });
 
-        if (room.hostPlayerId !== socket.id) {
+        if (room.hostPlayerId !== playerId) {
             return socket.emit('game:action-rejected', { reason: 'Only host can start match' });
         }
 
+        if (room.status !== 'LOBBY') return socket.emit('game:action-rejected', { reason: 'Match already started' });
         if (room.seats.length < 2) {
             return socket.emit('game:action-rejected', { reason: 'At least 2 players required' });
         }
@@ -1230,6 +1303,7 @@ io.on('connection', function(socket) {
 
     // room:rematch / room:reset
     socket.on('room:rematch', function(data) {
+        if (data?.roomCode !== undefined && typeof data.roomCode !== 'string') return socket.emit('game:action-rejected', { reason: 'Invalid room code' });
         const roomCode = (data && data.roomCode ? data.roomCode : currentRoomCode || '').toUpperCase();
         if (!roomCode) {
             return socket.emit('game:action-rejected', { reason: 'Not in a room' });
@@ -1237,29 +1311,31 @@ io.on('connection', function(socket) {
         const room = room_registry.getRoom(roomCode);
         if (!room) return socket.emit('game:action-rejected', { reason: 'Room not found' });
 
-        const seat = room.seats.find(s => s.playerId === socket.id);
+        const seat = room.seats.find(s => s.playerId === playerId);
         if (!seat) {
             return socket.emit('game:action-rejected', { reason: 'Must be seated in room to request rematch' });
         }
 
+        if (!room.seats.some(s => s.playerId === playerId)) return socket.emit('game:action-rejected', { reason: 'Must be seated in room' });
         const resetRes = room_registry.resetRoom(roomCode);
         if (resetRes.error) {
             return socket.emit('game:action-rejected', { reason: resetRes.error });
         }
 
-        console.log(`[Room] Rematch executed in room ${roomCode} by ${socket.id}`);
+        console.log(`[Room] Rematch executed in room ${roomCode} by ${playerId}`);
         io.to(`room:${roomCode}`).emit('room:state', room_registry.toRoomState(resetRes.room));
         io.to(`room:${roomCode}`).emit('game:state', null);
         io.to(`room:${roomCode}`).emit('game:event', {
             seq: 0,
             ts: Date.now(),
-            playerId: socket.id,
+            playerId: playerId,
             action: 'REMATCH',
             summary: 'Room returned to lobby for a rematch.'
         });
     });
 
     socket.on('room:reset', function(data) {
+        if (data?.roomCode !== undefined && typeof data.roomCode !== 'string') return socket.emit('game:action-rejected', { reason: 'Invalid room code' });
         const roomCode = (data && data.roomCode ? data.roomCode : currentRoomCode || '').toUpperCase();
         if (!roomCode) {
             return socket.emit('game:action-rejected', { reason: 'Not in a room' });
@@ -1267,18 +1343,19 @@ io.on('connection', function(socket) {
         const room = room_registry.getRoom(roomCode);
         if (!room) return socket.emit('game:action-rejected', { reason: 'Room not found' });
 
+        if (!room.seats.some(s => s.playerId === playerId)) return socket.emit('game:action-rejected', { reason: 'Must be seated in room' });
         const resetRes = room_registry.resetRoom(roomCode);
         if (resetRes.error) {
             return socket.emit('game:action-rejected', { reason: resetRes.error });
         }
 
-        console.log(`[Room] Reset executed in room ${roomCode} by ${socket.id}`);
+        console.log(`[Room] Reset executed in room ${roomCode} by ${playerId}`);
         io.to(`room:${roomCode}`).emit('room:state', room_registry.toRoomState(resetRes.room));
         io.to(`room:${roomCode}`).emit('game:state', null);
         io.to(`room:${roomCode}`).emit('game:event', {
             seq: 0,
             ts: Date.now(),
-            playerId: socket.id,
+            playerId: playerId,
             action: 'REMATCH',
             summary: 'Room was reset to lobby state.'
         });
@@ -1296,11 +1373,13 @@ io.on('connection', function(socket) {
 
         const action = {
             ...actionData,
-            playerId: socket.id
+            playerId: playerId
         };
 
         const previousGameState = room.gameState;
-        const result = game_manager.applyAction(room.gameState, action);
+        let result;
+        try { result = game_manager.applyAction(room.gameState, action); }
+        catch { return socket.emit('game:action-rejected', { reason: 'Malformed action' }); }
         if (!result.legal) {
             return socket.emit('game:action-rejected', { reason: result.reason || 'Illegal action' });
         }
@@ -1318,7 +1397,7 @@ io.on('connection', function(socket) {
         io.to(`room:${currentRoomCode}`).emit('game:event', {
             seq: room.seq,
             ts: Date.now(),
-            playerId: socket.id,
+            playerId: playerId,
             action: action.type,
             summary: buildActionEventSummary(room, action, previousGameState)
         });
@@ -1329,7 +1408,7 @@ io.on('connection', function(socket) {
 
         settlePendingBotDebts(currentRoomCode);
 
-        const hasOutstandingHumanDebt = !!(room.gameState.pendingCharge && Object.keys(room.gameState.pendingCharge.debtors || {}).length > 0);
+        const hasOutstandingHumanDebt = !!room.gameState.pendingActionResolution || !!(room.gameState.pendingCharge && Object.keys(room.gameState.pendingCharge.debtors || {}).length > 0);
         if (!hasOutstandingHumanDebt) {
             driveBotTurns(currentRoomCode);
         }
@@ -1343,7 +1422,7 @@ io.on('connection', function(socket) {
 
         socket.emit('room:state', room_registry.toRoomState(room));
         if (room.gameState) {
-            socket.emit('game:state', room_registry.toClientView(room, socket.id));
+            socket.emit('game:state', room_registry.toClientView(room, playerId));
         }
     });
 });

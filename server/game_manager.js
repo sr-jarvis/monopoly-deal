@@ -14,6 +14,8 @@ const {
     PHASES,
     ACTION_TYPES,
     COMPLETE_SET_SIZE,
+    propertyGroupColor,
+    nextPropertyGroupKey,
     getRequiredDrawCount,
     startTurn,
     validateAction,
@@ -28,14 +30,29 @@ const {
 const Deck = require('./models/Deck');
 const cardEffects = require('./card_effects');
 
+// Group identities are local to an owner. A single acquired property joins an
+// incomplete compatible set, never the donor's arbitrary group ID or a full set.
+// Whole-set Deal Breaker deliberately uses a different path and keeps buildings.
+function receiveProperty(player, card, sourceKey) {
+    const color = propertyGroupColor(sourceKey);
+    let destination = Object.keys(player.properties).find(key => propertyGroupColor(key) === color && player.properties[key].cards.length < COMPLETE_SET_SIZE[color]);
+    if (!destination) {
+        destination = nextPropertyGroupKey(player.properties, color);
+        player.properties[destination] = { color, cards: [], hasHouse: false, hasHotel: false };
+    }
+    player.properties[destination].cards.push(card);
+}
+
 /**
  * Creates a fresh, authoritative GameState for a set of players.
  * @param {Array<{id: string, name: string}>} playerList
  * @returns {Object} GameState
  */
 function createGameState(playerList) {
-    if (!playerList || playerList.length < 2) {
-        throw new Error('Cannot start a game with fewer than 2 players.');
+    if (!Array.isArray(playerList) || playerList.length < 2 || playerList.length > 5 ||
+        playerList.some(p => !p || typeof p.id !== 'string' || !p.id || ['__proto__', 'constructor', 'prototype'].includes(p.id)) ||
+        new Set(playerList.map(p => p.id)).size !== playerList.length) {
+        throw new Error('A game requires 2–5 distinct players.');
     }
 
     const players = {};
@@ -95,7 +112,7 @@ function createGameState(playerList) {
  * @param {Object} action - Action structure { type, playerId, cardId, count, ... }
  * @returns {Object} { legal: boolean, reason?: string, gameState?: Object }
  */
-function applyAction(state, action) {
+function applyCoreAction(state, action) {
     if (state && state.status === 'FINISHED') {
         return { legal: false, reason: 'Game is already finished.' };
     }
@@ -134,7 +151,7 @@ function applyAction(state, action) {
             // `doubleRentCardId` is valid only for the atomic Rent action below.
             // Reject it on ordinary bank/property plays so a forged payload
             // cannot consume an extra play without actually using Double The Rent.
-            if (action.doubleRentCardId) {
+            if (action.doubleRentCardId || action.doubleRentCardIds) {
                 return { legal: false, reason: 'Double The Rent may only be used with a Rent action.' };
             }
             // Find card in hand
@@ -145,31 +162,33 @@ function applyAction(state, action) {
             const card = player.hand.splice(cardIdx, 1)[0];
 
             // Decide placement based on action specifications or card meta.
-            if (action.targetZone === 'bank' || card.kind === 'MONEY') {
+            if (action.targetZone === 'bank' || (card.kind === 'MONEY' && !action.targetZone)) {
+                if (!['MONEY', 'ACTION', 'RENT'].includes(card.kind)) return { legal: false, reason: 'Property cards and wildcards never go in the bank.' };
                 player.bank.push(card);
             } else if (action.targetZone === 'properties') {
                 const color = action.propertyColor || card.color;
                 if (!color) {
                     return { legal: false, reason: 'Must specify property color to play property card.' };
                 }
-                if (!Object.prototype.hasOwnProperty.call(COMPLETE_SET_SIZE, color)) {
+                if (!propertyGroupColor(color)) {
                     return { legal: false, reason: `Unknown property color: ${color}.` };
                 }
                 if (card.kind === 'WILDCARD') {
                     const allowedColors = Array.isArray(card.colors) ? card.colors : (Array.isArray(card.types) ? card.types : []);
-                    if (allowedColors.length > 0 && !allowedColors.includes(color)) {
+                    if (allowedColors.length > 0 && !allowedColors.includes(propertyGroupColor(color))) {
                         return { legal: false, reason: `Wildcard ${card.title} cannot be placed on ${color}.` };
                     }
+                } else if (card.kind === 'PROPERTY' && propertyGroupColor(color) !== (card.color || card.type)) {
+                    return { legal: false, reason: 'A property must be placed in its native color.' };
                 } else if (card.kind !== 'PROPERTY') {
                     return { legal: false, reason: `Card ${card.title} cannot be played as a property.` };
                 }
                 if (!player.properties[color]) {
-                    player.properties[color] = { cards: [], hasHouse: false, hasHotel: false };
+                    player.properties[color] = { color: propertyGroupColor(color), cards: [], hasHouse: false, hasHotel: false };
                 }
                 player.properties[color].cards.push(card);
             } else {
-                // Action card played into the center/discard pile
-                nextState.discardPile.push(card);
+                return { legal: false, reason: 'Use PLAY_ACTION_CARD to resolve an action; money goes in the bank and property on the board.' };
             }
             break;
         }
@@ -184,7 +203,7 @@ function applyAction(state, action) {
             // The validator reserves two plays whenever this field is supplied.
             // Only a Rent card may legally consume that reservation; all other
             // action cards reject rather than silently accepting a forged field.
-            if (action.doubleRentCardId && !cardEffects.isRentCard(card)) {
+            if ((action.doubleRentCardId || action.doubleRentCardIds) && !cardEffects.isRentCard(card)) {
                 return { legal: false, reason: 'Double The Rent may only be used with a Rent action.' };
             }
 
@@ -193,11 +212,12 @@ function applyAction(state, action) {
                 // property color; Rent uses it as the color being charged.
                 const rentColor = action.propertyColor;
                 const rentSpec = cardEffects.getRentSpec(card);
+                if (!rentSpec) return { legal: false, reason: 'Rent card has no valid color specification.' };
                 if (!rentColor) return { legal: false, reason: 'Rent requires a property color.' };
-                if (!Object.prototype.hasOwnProperty.call(COMPLETE_SET_SIZE, rentColor)) {
+                if (!propertyGroupColor(rentColor)) {
                     return { legal: false, reason: `Unknown property color: ${rentColor}.` };
                 }
-                if (rentSpec.targeting === cardEffects.TARGETING.ALL_OPPONENTS && !rentSpec.colors.includes(rentColor)) {
+                if (rentSpec.targeting === cardEffects.TARGETING.ALL_OPPONENTS && !rentSpec.colors.includes(propertyGroupColor(rentColor))) {
                     return { legal: false, reason: `Rent card does not cover ${rentColor}.` };
                 }
                 if (rentSpec.targeting === cardEffects.TARGETING.SINGLE_OPPONENT) {
@@ -217,38 +237,20 @@ function applyAction(state, action) {
                 // is discarded by the caller (app.js only commits when legal), so
                 // no state — including the 2 plays already added by
                 // applyValidatedAction — leaks.
-                let doubled = false;
-                let dtrIdx = -1;
-                if (action.doubleRentCardId) {
-                    if (action.doubleRentCardId === action.cardId) {
-                        return { legal: false, reason: 'Double The Rent must be a separate card from the Rent card.' };
-                    }
-                    dtrIdx = player.hand.findIndex(c => c.id === action.doubleRentCardId);
-                    if (dtrIdx === -1) {
-                        return { legal: false, reason: 'Double The Rent card not found in your hand.' };
-                    }
-                    if (!cardEffects.isDoubleTheRentCard(player.hand[dtrIdx])) {
-                        return { legal: false, reason: 'That card is not a Double The Rent card.' };
-                    }
-                    rent.totalRent *= 2;
-                    doubled = true;
+                const companionIds = action.doubleRentCardIds || (action.doubleRentCardId ? [action.doubleRentCardId] : []);
+                for (const id of companionIds) {
+                    if (id === action.cardId) return { legal: false, reason: 'Double The Rent must be a separate card from the Rent card.' };
+                    const companion = player.hand.find(c => c.id === id);
+                    if (!companion) return { legal: false, reason: 'Double The Rent card not found in your hand.' };
+                    if (!cardEffects.isDoubleTheRentCard(companion)) return { legal: false, reason: 'That card is not a Double The Rent card.' };
                 }
-
+                rent.totalRent *= 2 ** companionIds.length;
+                const doubled = companionIds.length > 0;
                 const debtors = cardEffects.computeRentDebtors(nextState, action.playerId, card, action.targetPlayerId, rent.totalRent);
-                if (Object.keys(debtors).length === 0) return { legal: false, reason: `No eligible debtors for "${card.title}".` };
-
-                if (dtrIdx !== -1) {
-                    // Remove both cards by descending index so the first splice
-                    // can't invalidate the second index; discard both.
-                    const dtrCard = player.hand[dtrIdx];
-                    player.hand.splice(Math.max(cardIdx, dtrIdx), 1);
-                    player.hand.splice(Math.min(cardIdx, dtrIdx), 1);
-                    nextState.discardPile.push(card);
-                    nextState.discardPile.push(dtrCard);
-                } else {
-                    player.hand.splice(cardIdx, 1);
-                    nextState.discardPile.push(card);
-                }
+                if (!Object.keys(debtors).length) return { legal: false, reason: `No eligible debtors for "${card.title}".` };
+                const consumed = new Set([action.cardId, ...companionIds]);
+                nextState.discardPile.push(...player.hand.filter(c => consumed.has(c.id)));
+                player.hand = player.hand.filter(c => !consumed.has(c.id));
                 nextState.pendingCharge = {
                     type: 'RENT',
                     sourceTitle: card.title,
@@ -271,14 +273,11 @@ function applyAction(state, action) {
                 const sourceGroup = targetPlayer.properties[action.targetPropertyColor];
                 const stolenIdx = sourceGroup.cards.findIndex(c => c.id === action.targetCardId);
                 const [stolenCard] = sourceGroup.cards.splice(stolenIdx, 1);
-                if (sourceGroup.cards.length === 0) {
+                if (sourceGroup.cards.length === 0 && !sourceGroup.houseCard && !sourceGroup.hotelCard) {
                     delete targetPlayer.properties[action.targetPropertyColor];
                 }
 
-                if (!player.properties[action.targetPropertyColor]) {
-                    player.properties[action.targetPropertyColor] = { cards: [], hasHouse: false, hasHotel: false };
-                }
-                player.properties[action.targetPropertyColor].cards.push(stolenCard);
+                receiveProperty(player, stolenCard, action.targetPropertyColor);
 
                 player.hand.splice(cardIdx, 1);
                 nextState.discardPile.push(card);
@@ -311,25 +310,15 @@ function applyAction(state, action) {
                 // Cleanup now-empty source groups so the same color can be
                 // re-created cleanly on the receiving side and empty groups
                 // don't linger (which would also break win/complete-set checks).
-                if (offeredGroup.cards.length === 0) {
+                if (offeredGroup.cards.length === 0 && !offeredGroup.houseCard && !offeredGroup.hotelCard) {
                     delete player.properties[action.offeredPropertyColor];
                 }
-                if (requestedGroup.cards.length === 0) {
+                if (requestedGroup.cards.length === 0 && !requestedGroup.houseCard && !requestedGroup.hotelCard) {
                     delete targetPlayer.properties[action.requestedPropertyColor];
                 }
 
-                // Source group colors persist: the requested card joins the actor's
-                // group keyed by requestedPropertyColor; the offered card joins the
-                // target's group keyed by offeredPropertyColor.
-                if (!player.properties[action.requestedPropertyColor]) {
-                    player.properties[action.requestedPropertyColor] = { cards: [], hasHouse: false, hasHotel: false };
-                }
-                player.properties[action.requestedPropertyColor].cards.push(requestedCard);
-
-                if (!targetPlayer.properties[action.offeredPropertyColor]) {
-                    targetPlayer.properties[action.offeredPropertyColor] = { cards: [], hasHouse: false, hasHotel: false };
-                }
-                targetPlayer.properties[action.offeredPropertyColor].cards.push(offeredCard);
+                receiveProperty(player, requestedCard, action.requestedPropertyColor);
+                receiveProperty(targetPlayer, offeredCard, action.offeredPropertyColor);
 
                 player.hand.splice(cardIdx, 1);
                 nextState.discardPile.push(card);
@@ -368,19 +357,18 @@ function applyAction(state, action) {
                 const color = action.targetPropertyColor;
                 // Move the group object wholesale so cards and any future House/
                 // Hotel state stay attached to the complete set being stolen.
-                const stolenGroup = targetPlayer.properties[color];
-                delete targetPlayer.properties[color];
+                const sourceGroup = targetPlayer.properties[color];
+                const setSize = COMPLETE_SET_SIZE[propertyGroupColor(color)];
+                // Legacy snapshots may contain an overfull color pile. Take one
+                // complete set, not every surplus property of that color.
+                const stolenGroup = { ...sourceGroup, cards: sourceGroup.cards.slice(0, setSize) };
+                if (sourceGroup.cards.length > setSize) {
+                    targetPlayer.properties[color] = { color: propertyGroupColor(color), cards: sourceGroup.cards.slice(setSize), hasHouse: false, hasHotel: false };
+                } else delete targetPlayer.properties[color];
 
-                const existingGroup = player.properties[color];
-                if (!existingGroup) {
-                    player.properties[color] = stolenGroup;
-                } else {
-                    // The color-keyed model used by existing transfer paths merges
-                    // same-color groups. Preserve either group's building state.
-                    existingGroup.cards = existingGroup.cards.concat(stolenGroup.cards);
-                    existingGroup.hasHouse = !!existingGroup.hasHouse || !!stolenGroup.hasHouse;
-                    existingGroup.hasHotel = !!existingGroup.hasHotel || !!stolenGroup.hasHotel;
-                }
+                const destination = nextPropertyGroupKey(player.properties, color);
+                stolenGroup.color = propertyGroupColor(color);
+                player.properties[destination] = stolenGroup;
 
                 player.hand.splice(cardIdx, 1);
                 nextState.discardPile.push(card);
@@ -391,22 +379,22 @@ function applyAction(state, action) {
                 // House is server-authoritative: it may only be added onto a
                 // complete set the actor owns (never Railroad/Utility), and a
                 // set may hold at most one House. It consumes exactly one normal
-                // play and the card itself is discarded. Banking a House (played
+                // play and retains the physical card on the group. Banking a House (played
                 // via PLAY_CARD -> targetZone 'bank') is a separate path and is
                 // intentionally left unchanged.
                 const color = action.propertyColor;
                 if (!color) {
                     return { legal: false, reason: 'House requires a target property color.' };
                 }
-                if (!Object.prototype.hasOwnProperty.call(COMPLETE_SET_SIZE, color)) {
+                if (!propertyGroupColor(color)) {
                     return { legal: false, reason: `Unknown property color: ${color}.` };
                 }
-                if (cardEffects.HOUSE_HOTEL_EXCLUDED_COLORS.indexOf(color) !== -1) {
+                if (cardEffects.HOUSE_HOTEL_EXCLUDED_COLORS.indexOf(propertyGroupColor(color)) !== -1) {
                     return { legal: false, reason: `A House cannot be added to a ${color} set.` };
                 }
                 const group = player.properties[color];
                 const cardsOwned = group && Array.isArray(group.cards) ? group.cards.length : 0;
-                if (cardsOwned < COMPLETE_SET_SIZE[color]) {
+                if (cardsOwned < COMPLETE_SET_SIZE[propertyGroupColor(color)]) {
                     return { legal: false, reason: `You must own a complete ${color} set to add a House.` };
                 }
                 if (group.hasHouse) {
@@ -414,8 +402,8 @@ function applyAction(state, action) {
                 }
 
                 group.hasHouse = true;
+                group.houseCard = card;
                 player.hand.splice(cardIdx, 1);
-                nextState.discardPile.push(card);
                 break;
             }
 
@@ -423,7 +411,7 @@ function applyAction(state, action) {
                 // Hotel mirrors House exactly, with one added prerequisite: the
                 // target set must already carry a House. Same complete-set /
                 // non-Railroad-Utility gate, one Hotel max, consumes exactly one
-                // normal play, card discarded. Banking a Hotel (played via
+                // normal play, physical card retained. Banking a Hotel (played via
                 // PLAY_CARD -> targetZone 'bank', $4M cash) is a separate path
                 // and is intentionally left unchanged. This is kept as a small
                 // parallel branch rather than a shared validator so the freshly
@@ -432,15 +420,15 @@ function applyAction(state, action) {
                 if (!color) {
                     return { legal: false, reason: 'Hotel requires a target property color.' };
                 }
-                if (!Object.prototype.hasOwnProperty.call(COMPLETE_SET_SIZE, color)) {
+                if (!propertyGroupColor(color)) {
                     return { legal: false, reason: `Unknown property color: ${color}.` };
                 }
-                if (cardEffects.HOUSE_HOTEL_EXCLUDED_COLORS.indexOf(color) !== -1) {
+                if (cardEffects.HOUSE_HOTEL_EXCLUDED_COLORS.indexOf(propertyGroupColor(color)) !== -1) {
                     return { legal: false, reason: `A Hotel cannot be added to a ${color} set.` };
                 }
                 const group = player.properties[color];
                 const cardsOwned = group && Array.isArray(group.cards) ? group.cards.length : 0;
-                if (cardsOwned < COMPLETE_SET_SIZE[color]) {
+                if (cardsOwned < COMPLETE_SET_SIZE[propertyGroupColor(color)]) {
                     return { legal: false, reason: `You must own a complete ${color} set to add a Hotel.` };
                 }
                 if (!group.hasHouse) {
@@ -451,8 +439,8 @@ function applyAction(state, action) {
                 }
 
                 group.hasHotel = true;
+                group.hotelCard = card;
                 player.hand.splice(cardIdx, 1);
-                nextState.discardPile.push(card);
                 break;
             }
 
@@ -531,7 +519,7 @@ function applyAction(state, action) {
             if (!destColor) {
                 return { legal: false, reason: 'Rearrange requires a destination propertyColor.' };
             }
-            if (!Object.prototype.hasOwnProperty.call(COMPLETE_SET_SIZE, destColor)) {
+            if (!propertyGroupColor(destColor)) {
                 return { legal: false, reason: `Unknown property color: ${destColor}.` };
             }
 
@@ -563,29 +551,24 @@ function applyAction(state, action) {
             if (destColor === sourceColor) {
                 return { legal: false, reason: 'Wildcard is already assigned to that color.' };
             }
-            // A House or Hotel belongs to the completed source set. Moving a
-            // wildcard out would leave the building flags on an incomplete set,
-            // which is invalid and could be forced through the socket without
-            // this server-side guard.
-            if (sourceGroup.hasHouse || sourceGroup.hasHotel) {
-                return { legal: false, reason: 'A wildcard cannot be moved out of a set with a House or Hotel.' };
-            }
-
+            // A wild may change color any time on its owner's turn. Placed
+            // buildings remain physical assets on the source group; bonuses
+            // apply again only if that group is complete.
             const allowedColors = Array.isArray(card.colors)
                 ? card.colors
                 : (Array.isArray(card.types) ? card.types : []);
-            if (allowedColors.length > 0 && !allowedColors.includes(destColor)) {
+            if (allowedColors.length > 0 && !allowedColors.includes(propertyGroupColor(destColor))) {
                 return { legal: false, reason: `That wildcard cannot be assigned to ${destColor}.` };
             }
 
             // Move it: drop from source, delete the source group if now empty,
             // create the destination group only if it doesn't already exist.
             sourceGroup.cards.splice(sourceIdx, 1);
-            if (sourceGroup.cards.length === 0) {
+            if (sourceGroup.cards.length === 0 && !sourceGroup.houseCard && !sourceGroup.hotelCard) {
                 delete player.properties[sourceColor];
             }
             if (!player.properties[destColor]) {
-                player.properties[destColor] = { cards: [], hasHouse: false, hasHotel: false };
+                player.properties[destColor] = { color: propertyGroupColor(destColor), cards: [], hasHouse: false, hasHotel: false };
             }
             player.properties[destColor].cards.push(card);
             break;
@@ -607,24 +590,18 @@ function applyAction(state, action) {
                     return { legal: false, reason: `Payment card ${cardId} not found in player assets.` };
                 }
                 if (extracted.zone === 'properties') {
-                    if (!recipient.properties[extracted.color]) {
-                        recipient.properties[extracted.color] = { cards: [], hasHouse: false, hasHotel: false };
-                    }
-                    recipient.properties[extracted.color].cards.push(extracted.card);
+                    receiveProperty(recipient, extracted.card, extracted.color);
                 } else {
                     recipient.bank.push(extracted.card);
                 }
             }
 
-            // Exploit guard: if paying rent stripped the last card out of one of
-            // the payer's property groups, drop the whole group — including any
-            // hasHouse/hasHotel flags. Leaving an empty-but-flagged group behind
-            // would let a single later property card "revive" a free House/Hotel
-            // on an incomplete set.
+            // Drop empty groups only when they contain no physical building.
+            // Legacy flags without a card must not revive a free building.
             Object.keys(player.properties || {}).forEach(color => {
                 const grp = player.properties[color];
                 if (!grp || !Array.isArray(grp.cards) || grp.cards.length === 0) {
-                    delete player.properties[color];
+                    if (!grp || (!grp.houseCard && !grp.hotelCard)) delete player.properties[color];
                 }
             });
 
@@ -694,6 +671,98 @@ function applyAction(state, action) {
 }
 
 /**
+ * A single serial response window. Board effects are validated before announcing
+ * them, but remain unapplied until the targeted player accepts. Each debtor has
+ * an independent JSN chain; cancellation never shields the other debtors.
+ */
+function applyAction(state, action) {
+    if (!state || !action || !state.players || !state.players[action.playerId]) return { legal: false, reason: 'Unknown player or game.' };
+    if (state.status === 'FINISHED') return { legal: false, reason: 'Game is already finished.' };
+    if (state.pendingActionResolution) return resolveResponse(state, action);
+    if (action.type === 'ACCEPT_ACTION' || action.type === 'JUST_SAY_NO') return { legal: false, reason: 'No pending action to respond to.' };
+    const zones = { BANK: 'bank', PROPERTY: 'properties', PROPERTIES: 'properties' };
+    if (zones[action.targetZone]) action = { ...action, targetZone: zones[action.targetZone] };
+    const card = state.players[action.playerId].hand.find(c => c.id === action.cardId);
+    const result = applyCoreAction(state, action);
+    if (!result.legal) return result;
+    const next = result.gameState;
+    if (action.type === 'PLAY_ACTION_CARD' && card && ['Sly Deal', 'Forced Deal', 'Deal Breaker'].includes(card.title)) {
+        const boardAfter = {};
+        for (const id of [action.playerId, action.targetPlayerId]) {
+            boardAfter[id] = { properties: next.players[id].properties, bank: next.players[id].bank };
+            next.players[id].properties = JSON.parse(JSON.stringify(state.players[id].properties));
+            next.players[id].bank = JSON.parse(JSON.stringify(state.players[id].bank));
+        }
+        next.status = state.status; next.winnerId = null; next.winDetails = null;
+        next.pendingActionResolution = {
+            sourceCard: card.title, sourceTitle: card.title, fromPlayerId: action.playerId,
+            targetPlayerId: action.targetPlayerId, eligibleResponderIds: [action.targetPlayerId],
+            cancelled: false, responseCount: 0, boardAfter
+        };
+        // Replace the speculative core replay snapshot with the real public board.
+        const event = next.replayLogs[next.replayLogs.length - 1];
+        if (event) for (const id of next.turnOrder) event.boardSnapshotSummary[id] = summarizePlayerPublicState(next.players[id]);
+        return { legal: true, gameState: next };
+    }
+    if (action.type === 'PLAY_ACTION_CARD' && next.pendingCharge) {
+        next.pendingCharge.acceptedDebtorIds = [];
+        openChargeResponse(next);
+    }
+    return result;
+}
+
+function openChargeResponse(state) {
+    const charge = state.pendingCharge;
+    const id = charge && Object.keys(charge.debtors).find(id => !(charge.acceptedDebtorIds || []).includes(id));
+    if (!id) return;
+    state.pendingActionResolution = {
+        sourceCard: charge.sourceTitle, sourceTitle: charge.sourceTitle,
+        fromPlayerId: charge.fromPlayerId, targetPlayerId: id,
+        eligibleResponderIds: [id], cancelled: false, responseCount: 0, charge: true
+    };
+}
+
+function resolveResponse(state, action) {
+    const pending = state.pendingActionResolution;
+    if (!['JUST_SAY_NO', 'ACCEPT_ACTION'].includes(action.type)) return { legal: false, reason: 'The pending action must be accepted or countered first.' };
+    if (!pending.eligibleResponderIds.includes(action.playerId)) return { legal: false, reason: 'It is not your response.' };
+    const next = JSON.parse(JSON.stringify(state));
+    const response = next.pendingActionResolution;
+    if (action.type === 'JUST_SAY_NO') {
+        const hand = next.players[action.playerId].hand;
+        const index = hand.findIndex(c => c.id === action.cardId && c.kind === 'ACTION' && c.title === 'Just Say No');
+        if (index < 0) return { legal: false, reason: 'You must play a Just Say No card held in your hand.' };
+        next.discardPile.push(hand.splice(index, 1)[0]);
+        response.cancelled = !response.cancelled;
+        response.responseCount += 1;
+        response.eligibleResponderIds = [action.playerId === response.fromPlayerId ? response.targetPlayerId : response.fromPlayerId];
+    } else {
+        next.pendingActionResolution = null;
+        if (response.charge) {
+            if (response.cancelled) delete next.pendingCharge.debtors[response.targetPlayerId];
+            else next.pendingCharge.acceptedDebtorIds.push(response.targetPlayerId);
+            if (!Object.keys(next.pendingCharge.debtors).length) next.pendingCharge = null;
+            openChargeResponse(next);
+        } else if (!response.cancelled) {
+            for (const [id, board] of Object.entries(response.boardAfter)) {
+                next.players[id].properties = board.properties;
+                next.players[id].bank = board.bank;
+            }
+        }
+    }
+    // Never finish on an unaccepted property transfer. Actor priority is stable.
+    let winResult;
+    if (!next.pendingActionResolution) {
+        for (const id of [pending.fromPlayerId, ...next.turnOrder.filter(id => id !== pending.fromPlayerId)]) {
+            const win = checkWinCondition(next.players[id]);
+            if (win.isWinner) { next.status = 'FINISHED'; next.winnerId = id; next.winDetails = win.details; winResult = win; break; }
+        }
+    }
+    recordGameEvent(next, action.type, action.playerId, { cardId: action.cardId, sourceTitle: pending.sourceTitle }, 'APPLIED');
+    return { legal: true, gameState: next, ...(winResult ? { isWinner: true, winnerId: next.winnerId, completedSetColors: winResult.completedSetColors, details: winResult.details } : {}) };
+}
+
+/**
  * Moves up to `count` cards from the draw pile to a player's hand. When the
  * draw pile runs out it preserves the normal mandatory-draw reshuffle rule.
  * Returns fewer than `count` only when both piles are exhausted.
@@ -729,6 +798,12 @@ function extractPlayerAssetCard(player, cardId) {
     const properties = player.properties || {};
     for (const color of Object.keys(properties)) {
         const group = properties[color];
+        for (const [key, flag] of [['houseCard', 'hasHouse'], ['hotelCard', 'hasHotel']]) {
+            if (group[key] && group[key].id === cardId) {
+                const card = group[key]; delete group[key]; group[flag] = false;
+                return { card, zone: 'bank', color: null };
+            }
+        }
         const idx = (group.cards || []).findIndex(c => c.id === cardId);
         if (idx !== -1) {
             return { card: group.cards.splice(idx, 1)[0], zone: 'properties', color };
@@ -852,6 +927,8 @@ function getMatchTelemetry(gameState) {
 function toClientView(gameState, playerId) {
     const redacted = JSON.parse(JSON.stringify(gameState));
     
+    if (redacted.pendingActionResolution) delete redacted.pendingActionResolution.boardAfter;
+
     // Hide draw pile cards (only reveal count)
     redacted.drawPileCount = redacted.drawPile.length;
     delete redacted.drawPile;
@@ -888,7 +965,7 @@ function evaluateWinCondition(gameState, playerId) {
     const winResult = checkWinCondition(gameState.players[playerId]);
     const nextState = JSON.parse(JSON.stringify(gameState));
     let transitioned = false;
-    if (winResult.isWinner && nextState.status !== 'FINISHED') {
+    if (winResult.isWinner && !nextState.pendingActionResolution && nextState.status !== 'FINISHED') {
         nextState.status = 'FINISHED';
         nextState.winnerId = playerId;
         nextState.winDetails = winResult.details;

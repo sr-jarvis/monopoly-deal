@@ -99,7 +99,12 @@ describe('Solo bot action cards', function () {
     assert.strictEqual(room.gameState.pendingCharge.debtors[room.hostPlayerId].amountOwed, 5);
     const humanView = room_registry.toClientView(room, room.hostPlayerId);
     const botView = room_registry.toClientView(room, firstBot.playerId);
-    assert.strictEqual(humanView.pendingResolution.sourceTitle, 'Debt Collector');
+    assert.strictEqual(humanView.pendingActionResolution.sourceTitle, 'Debt Collector');
+    assert.strictEqual(humanView.pendingResolution, undefined);
+    const accepted = game_manager.applyAction(room.gameState, { type: 'ACCEPT_ACTION', playerId: room.hostPlayerId });
+    assert.strictEqual(accepted.legal, true);
+    room.gameState = accepted.gameState;
+    assert.strictEqual(room_registry.toClientView(room, room.hostPlayerId).pendingResolution.sourceTitle, 'Debt Collector');
     assert.ok(humanView.pendingCharge);
     assert.strictEqual(botView.pendingResolution, undefined);
   });
@@ -138,6 +143,12 @@ describe('Solo bot action cards', function () {
 
     assert.ok(room.gameState.pendingCharge);
     assert.strictEqual(room.gameState.pendingCharge.sourceTitle, 'Its My Birthday');
+    if (room.gameState.pendingActionResolution?.eligibleResponderIds.includes(room.hostPlayerId)) {
+      const accepted = game_manager.applyAction(room.gameState, {type:'ACCEPT_ACTION', playerId:room.hostPlayerId});
+      assert.strictEqual(accepted.legal, true, accepted.reason);
+      room.gameState = accepted.gameState;
+      app.__botDriver.settlePendingBotDebts(room.roomCode);
+    }
     assert.deepStrictEqual(Object.keys(room.gameState.pendingCharge.debtors), [room.hostPlayerId]);
     assert.strictEqual(room.gameState.pendingCharge.debtors[room.hostPlayerId].amountOwed, 2);
     assert.ok(room.gameState.players[firstBot.playerId].bank.some(card => card.id === 'bot-birthday-pay'));
@@ -218,6 +229,10 @@ describe('Solo bot action cards', function () {
 
     app.__botDriver.driveBotTurns(room.roomCode);
 
+    assert.ok(room.gameState.pendingActionResolution, 'bot action waits for the human response');
+    const accepted = game_manager.applyAction(room.gameState, {type:'ACCEPT_ACTION', playerId:room.hostPlayerId});
+    assert.strictEqual(accepted.legal, true, accepted.reason);
+    room.gameState = accepted.gameState;
     const botState = room.gameState.players[firstBot.playerId];
     const hostState = room.gameState.players[room.hostPlayerId];
 
@@ -285,6 +300,10 @@ describe('Solo bot action cards', function () {
 
     app.__botDriver.driveBotTurns(room.roomCode);
 
+    assert.ok(room.gameState.pendingActionResolution, 'bot action waits for the human response');
+    const accepted = game_manager.applyAction(room.gameState, {type:'ACCEPT_ACTION', playerId:room.hostPlayerId});
+    assert.strictEqual(accepted.legal, true, accepted.reason);
+    room.gameState = accepted.gameState;
     const botState = room.gameState.players[firstBot.playerId];
     const hostState = room.gameState.players[room.hostPlayerId];
 
@@ -387,6 +406,10 @@ describe('Solo bot action cards', function () {
 
     app.__botDriver.driveBotTurns(room.roomCode);
 
+    assert.ok(room.gameState.pendingActionResolution, 'bot action waits for the human response');
+    const accepted = game_manager.applyAction(room.gameState, {type:'ACCEPT_ACTION', playerId:room.hostPlayerId});
+    assert.strictEqual(accepted.legal, true, accepted.reason);
+    room.gameState = accepted.gameState;
     const botState = room.gameState.players[firstBot.playerId];
     const hostState = room.gameState.players[room.hostPlayerId];
 

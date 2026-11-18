@@ -12,7 +12,7 @@ const PAYMENT_RULES_CATALOG = Object.freeze([
     id: "LIQUIDATE_BANK_CASH_FIRST",
     tier: 1,
     title: "Bank Cash Notes First",
-    description: "Pay from already-banked money/action cards before touching hand cash or any property."
+    description: "Pay from already-banked money/action cards before touching any property. Never pay from hand."
   },
   {
     id: "LIQUIDATE_LOOSE_WILDCARDS_SINGLES",
@@ -77,6 +77,7 @@ function evaluatePaymentCandidates(gameState, playerId) {
   // Bank cards (Tier 1)
   const bankCards = player.bank || [];
   for (const card of bankCards) {
+    if (!(card.value > 0)) continue;
     const val = card.value || 0;
     candidates.push({
       cardId: card.id,
@@ -90,32 +91,7 @@ function evaluatePaymentCandidates(gameState, playerId) {
     });
   }
 
-  // Hand money/action cards (Tier 1 - cash equivalent).
-  // Real Card model instances (models/MoneyCard.js, models/ActionCard.js) don't set
-  // `.type`/`.types` at all - only PropertyCard (`.type` = color) and Wildcard/RentCard
-  // (`.types` = color array) do. So "cash-equivalent" is: no property/wildcard marker,
-  // and not Just Say No (kept in hand to block, not spent as cash). The literal
-  // 'money'/'action' checks are kept too for callers that pass pre-tagged card shapes.
-  const handCards = player.hand || [];
-  for (const card of handCards) {
-    const cardTitle = card.title || card.name || '';
-    const isCashEquivalent = card.type === 'money'
-      || card.type === 'action'
-      || (!card.type && !card.types && cardTitle !== 'Just Say No' && cardTitle !== 'JUST_SAY_NO');
-    if (isCashEquivalent) {
-      const val = card.value || 0;
-      candidates.push({
-        cardId: card.id,
-        card,
-        zone: 'hand',
-        kind: card.type,
-        tier: 1,
-        tierLabel: "Hand Cash Notes",
-        value: val,
-        strategicValue: (valueMatrix[card.id] || {}).strategicValue || val
-      });
-    }
-  }
+  // Hand cards never pay debts (E3113 p.1).
 
   // Board Property & Wildcard cards (Tiers 2 - 5)
   const propertiesObj = player.properties || {};
@@ -128,11 +104,16 @@ function evaluatePaymentCandidates(gameState, playerId) {
       ? (propertiesObj.find(p => p.color === color) || { cards: [] })
       : (propertiesObj[color] || { cards: [] });
 
+    for (const key of ['houseCard', 'hotelCard']) {
+      const card = group[key];
+      if (card && card.value > 0) candidates.push({cardId:card.id, card, zone:'building', color, kind:'action', tier:2, tierLabel:'Placed building', value:card.value, strategicValue:card.value});
+    }
     const cards = group.cards || [];
     const isComplete = isCompletePropertySet(gameState, playerId, color);
     const cardCount = cards.length;
 
     for (const card of cards) {
+      if (!(card.value > 0)) continue;
       let tier = 2;
       let tierLabel = "Loose Wildcards & Non-Set Properties";
 

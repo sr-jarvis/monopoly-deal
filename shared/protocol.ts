@@ -23,6 +23,18 @@ export const PropertyColorSchema = z.enum([
   'ALL'
 ]);
 export type PropertyColor = z.infer<typeof PropertyColorSchema>;
+export const PropertyGroupKeySchema = z.string().regex(/^(Brown|LightBlue|Purple|Orange|Red|Yellow|Green|DarkBlue|Railroad|Utility)(?:#([2-9]|[1-9][0-9]+))?$/);
+export type PropertyGroupKey = string;
+export function propertyGroupColor(key: string): PropertyColor {
+  return PropertyColorSchema.parse(key.split('#')[0]);
+}
+export function nextPropertyGroupKey(properties: Record<string, Card[]>, color: string): string {
+  const base = propertyGroupColor(color);
+  if (!properties[base]) return base;
+  let index = 2;
+  while (properties[`${base}#${index}`]) index++;
+  return `${base}#${index}`;
+}
 
 export interface Card {
   id: string;
@@ -49,6 +61,7 @@ export const ActionTypeSchema = z.enum([
   'DISCARD_CARD',
   'PASS_TURN',
   'JUST_SAY_NO',
+  'ACCEPT_ACTION',
   'PAY_RENT',
   'REARRANGE'
 ]);
@@ -59,18 +72,19 @@ export const GameActionPayloadSchema = z.object({
   type: ActionTypeSchema,
   cardId: z.string().optional(),
   targetZone: z.enum(['HAND', 'BANK', 'PROPERTY', 'ACTION_PILE', 'DISCARD', 'bank', 'properties', 'action']).optional(),
-  propertyColor: PropertyColorSchema.optional(),
+  propertyColor: PropertyGroupKeySchema.optional(),
   targetPlayerId: z.string().optional(),
-  targetPropertyColor: PropertyColorSchema.optional(),
+  targetPropertyColor: PropertyGroupKeySchema.optional(),
   targetCardId: z.string().optional(),
   // Forced Deal: one offered actor property swapped for one requested target property.
   offeredCardId: z.string().optional(),
-  offeredPropertyColor: PropertyColorSchema.optional(),
+  offeredPropertyColor: PropertyGroupKeySchema.optional(),
   requestedCardId: z.string().optional(),
-  requestedPropertyColor: PropertyColorSchema.optional(),
+  requestedPropertyColor: PropertyGroupKeySchema.optional(),
   // Rent + Double The Rent: a separate DTR card in hand played atomically with
   // a Rent card. Costs 2 plays; doubles the rent after normal calculation.
   doubleRentCardId: z.string().optional(),
+  doubleRentCardIds: z.array(z.string()).min(1).max(2).optional(),
   paymentCardIds: z.array(z.string()).optional(),
   count: z.number().int().positive().optional(),
   seq: z.number().int().nonnegative().optional()
@@ -112,9 +126,8 @@ export interface RoomState {
   seats: SeatState[];
 }
 
-// Additive, sparse per-color building state. Only colors that actually carry a
-// building appear as keys; `properties` keeps its existing wire shape.
-export type BuildingState = Partial<Record<PropertyColor, { house?: boolean; hotel?: boolean }>>;
+// Sparse per-group building state, keyed exactly like properties (Brown, Brown#2, ...).
+export type BuildingState = Partial<Record<string, { house?: boolean; hotel?: boolean; houseCard?: Card; hotelCard?: Card }>>;
 
 // S -> C: game:state (Client View)
 export interface PlayerClientView {
@@ -125,18 +138,30 @@ export interface PlayerClientView {
   difficulty?: string;
   handCount: number;
   bank: Card[];
-  properties: Record<PropertyColor, Card[]>;
+  properties: Record<string, Card[]>;
   buildings?: BuildingState;
   completedSetColors?: PropertyColor[];
+  completedSetGroups?: string[];
 }
 
 // Public charge metadata for every seat. The debtor-only payment choices stay
 // in pendingResolution below.
 export interface PendingChargeSummary {
   sourceTitle: string;
-  rentColor?: PropertyColor | null;
+  rentColor?: PropertyGroupKey | null;
   fromPlayerId: string;
   debtors: Array<{ playerId: string; amountOwed: number }>;
+}
+
+export interface PendingActionResponse {
+  sourceTitle: string;
+  sourceCard?: string;
+  fromPlayerId: string;
+  targetPlayerId: string;
+  eligibleResponderIds: string[];
+  cancelled: boolean;
+  responseCount: number;
+  charge?: boolean;
 }
 
 export interface GameClientState {
@@ -152,16 +177,18 @@ export interface GameClientState {
     id: string;
     hand: Card[];
     bank: Card[];
-    properties: Record<PropertyColor, Card[]>;
+    properties: Record<string, Card[]>;
     buildings?: BuildingState;
     completedSetColors?: PropertyColor[];
+  completedSetGroups?: string[];
   };
   opponents: PlayerClientView[];
   pendingCharge?: PendingChargeSummary;
+  pendingActionResolution?: PendingActionResponse;
   pendingResolution?: {
     type: string;
     sourceTitle?: string;
-    rentColor?: PropertyColor;
+    rentColor?: PropertyGroupKey;
     targetPlayerId: string;
     amountOwed?: number;
     fromPlayerId?: string;

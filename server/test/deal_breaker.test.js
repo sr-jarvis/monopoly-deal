@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 
-const game_manager = require('../game_manager');
+const game_manager = require('./support/accepted_actions');
 const { ACTION_TYPES } = require('../rules_validator');
 const ActionCard = require('../models/ActionCard');
 const PropertyCard = require('../models/PropertyCard');
@@ -80,7 +80,7 @@ describe('Deal Breaker — complete property-set transfer', function () {
         assert.strictEqual(result.gameState.players.p1.properties.DarkBlue.hasHotel, true);
     });
 
-    it('merges a same-color source group without losing either building flag', function () {
+    it('keeps a same-color stolen set independent with its building flags', function () {
         const state = baseState();
         state.players.p1.hand = [makeDealBreaker('db-action')];
         state.players.p1.properties.Brown = group([makeProperty('br-own', 'Mediterranean Avenue', 1, 'Brown')], false, true);
@@ -93,9 +93,13 @@ describe('Deal Breaker — complete property-set transfer', function () {
         const merged = result.gameState.players.p1.properties.Brown;
 
         assert.strictEqual(result.legal, true);
-        assert.deepStrictEqual(merged.cards.map(card => card.id), ['br-own', 'br-1', 'br-2']);
-        assert.strictEqual(merged.hasHouse, true);
+        assert.deepStrictEqual(merged.cards.map(card => card.id), ['br-own']);
+        assert.strictEqual(merged.hasHouse, false);
         assert.strictEqual(merged.hasHotel, true);
+        const stolen = result.gameState.players.p1.properties['Brown#2'];
+        assert.deepStrictEqual(stolen.cards.map(card => card.id), ['br-1', 'br-2']);
+        assert.strictEqual(stolen.hasHouse, true);
+        assert.strictEqual(stolen.hasHotel, false);
     });
 
     it('rejects incomplete targets without mutating the original state', function () {

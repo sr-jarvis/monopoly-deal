@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Card, PropertyColor } from '@monopoly-deal/shared';
+import { Card, propertyGroupColor, nextPropertyGroupKey } from '@monopoly-deal/shared';
 import { CardView } from './CardView';
 
 interface RearrangeWildcardModalProps {
   card: Card;
-  currentColor: PropertyColor;
+  currentColor: string;
+  properties?: Record<string, Card[]>;
   onClose: () => void;
-  onRearrange: (destinationColor: PropertyColor) => void;
+  onRearrange: (destinationColor: string) => void;
 }
 
 const humanize = (color: string): string => color.replace(/([a-z])([A-Z])/g, '$1 $2');
@@ -14,6 +15,7 @@ const humanize = (color: string): string => color.replace(/([a-z])([A-Z])/g, '$1
 export const RearrangeWildcardModal: React.FC<RearrangeWildcardModalProps> = ({
   card,
   currentColor,
+  properties = {},
   onClose,
   onRearrange
 }) => {
@@ -21,10 +23,8 @@ export const RearrangeWildcardModal: React.FC<RearrangeWildcardModalProps> = ({
   // multi-colour "Property Wild Card" carries every real colour in `card.colors`.
   // Drop the colour it currently sits in and the non-colour 'ALL' sentinel — the
   // server rejects both anyway.
-  const destinationColors: PropertyColor[] = (card.colors || []).filter(
-    (color): color is PropertyColor => color !== 'ALL' && color !== currentColor
-  );
-  const [selected, setSelected] = useState<PropertyColor | ''>('');
+  const destinationColors = [...new Set((card.colors || []).filter(color => color !== 'ALL').flatMap(color => [color, ...Object.keys(properties).filter(key => propertyGroupColor(key) === color), nextPropertyGroupKey(properties, color)]))].filter(key => key !== currentColor);
+  const [selected, setSelected] = useState<string>('');
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">

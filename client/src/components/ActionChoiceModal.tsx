@@ -1,27 +1,28 @@
 import React, { useState } from 'react';
-import { Card, PropertyColor, PlayerClientView, BuildingState } from '@monopoly-deal/shared';
+import { Card, PropertyColor, PlayerClientView, BuildingState, propertyGroupColor, nextPropertyGroupKey } from '@monopoly-deal/shared';
 import { CardView } from './CardView';
 
 interface ActionChoiceModalProps {
   card: Card;
   opponents: PlayerClientView[];
-  selfProperties: Record<PropertyColor, Card[]>;
+  selfProperties: Record<string, Card[]>;
   selfHand: Card[];
   actionCountRemaining: number;
-  selfCompletedSetColors?: PropertyColor[];
+  selfCompletedSetColors?: string[];
   selfBuildings?: BuildingState;
   onClose: () => void;
   onPlay: (options: {
     targetZone: 'bank' | 'properties' | 'action';
-    propertyColor?: PropertyColor;
+    propertyColor?: string;
     targetPlayerId?: string;
-    targetPropertyColor?: PropertyColor;
+    targetPropertyColor?: string;
     targetCardId?: string;
     offeredCardId?: string;
-    offeredPropertyColor?: PropertyColor;
+    offeredPropertyColor?: string;
     requestedCardId?: string;
-    requestedPropertyColor?: PropertyColor;
+    requestedPropertyColor?: string;
     doubleRentCardId?: string;
+    doubleRentCardIds?: string[];
   }) => void;
 }
 
@@ -52,7 +53,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
   const [selectedTargetPlayer, setSelectedTargetPlayer] = useState<string>(
     opponents.length > 0 ? opponents[0].id : ''
   );
-  const [selectedColor, setSelectedColor] = useState<PropertyColor>(
+  const [selectedColor, setSelectedColor] = useState<string>(
     card.color || (card.colors || []).find((color): color is PropertyColor => color !== 'ALL') || 'Green'
   );
   const [selectedTargetCardId, setSelectedTargetCardId] = useState<string>('');
@@ -60,7 +61,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
   // (target-owned) property reuses `selectedTargetCardId`, which is already
   // cleared whenever the target opponent changes.
   const [selectedOfferedCardId, setSelectedOfferedCardId] = useState<string>('');
-  const [selectedTargetSetColor, setSelectedTargetSetColor] = useState<PropertyColor | ''>('');
+  const [selectedTargetSetColor, setSelectedTargetSetColor] = useState<string>('');
 
   // Server ActionCard instances don't carry a reliable `type` field (only
   // PropertyCard sets one, to a color) - classify by exact title instead.
@@ -80,42 +81,45 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
   const doubleRentCard = (selfHand || []).find((c) => (c.title || c.name) === 'Double The Rent');
   const canDoubleRent = !!doubleRentCard && actionCountRemaining >= 2;
   const [useDoubleRent, setUseDoubleRent] = useState<boolean>(false);
+  const [useTwoDoublers, setUseTwoDoublers] = useState(false);
+  const doublers = selfHand.filter(c => (c.title || c.name) === 'Double The Rent');
+  const canUseTwoDoublers = doublers.length >= 2 && actionCountRemaining >= 3;
 
   // A House may only be added onto a complete set the player owns that isn't a
   // Railroad/Utility set and doesn't already carry a House. A Hotel needs the
   // same, plus an existing House and no existing Hotel. Trust the
   // server-computed `completedSetColors` and additive `buildings` state.
   const BUILDING_EXCLUDED_COLORS: PropertyColor[] = ['Railroad', 'Utility'];
-  const houseEligibleColors: PropertyColor[] = (selfCompletedSetColors || []).filter(
-    (color) => !BUILDING_EXCLUDED_COLORS.includes(color) && !selfBuildings?.[color]?.house
+  const houseEligibleColors: string[] = (selfCompletedSetColors || []).filter(
+    (color) => !BUILDING_EXCLUDED_COLORS.includes(propertyGroupColor(color)) && !selfBuildings?.[color]?.house
   );
-  const hotelEligibleColors: PropertyColor[] = (selfCompletedSetColors || []).filter(
+  const hotelEligibleColors: string[] = (selfCompletedSetColors || []).filter(
     (color) =>
-      !BUILDING_EXCLUDED_COLORS.includes(color) &&
+      !BUILDING_EXCLUDED_COLORS.includes(propertyGroupColor(color)) &&
       selfBuildings?.[color]?.house &&
       !selfBuildings?.[color]?.hotel
   );
-  const [selectedHouseColor, setSelectedHouseColor] = useState<PropertyColor | ''>('');
-  const [selectedHotelColor, setSelectedHotelColor] = useState<PropertyColor | ''>('');
+  const [selectedHouseColor, setSelectedHouseColor] = useState<string>('');
+  const [selectedHotelColor, setSelectedHotelColor] = useState<string>('');
 
   // An opponent is a legal Sly Deal / Forced Deal target only if they own at
   // least one property card sitting in a set that isn't already complete -
   // trusting the server-computed `completedSetColors` rather than re-deriving
   // set sizes on the client.
   const isOpponentStealable = (opp: PlayerClientView): boolean => {
-    const completed = opp.completedSetColors || [];
+    const completed = opp.completedSetGroups || opp.completedSetColors || [];
     return Object.entries(opp.properties || {}).some(
       ([color, cards]) => (cards?.length || 0) > 0 && !completed.includes(color as PropertyColor)
     );
   };
 
   const isOpponentSetStealable = (opp: PlayerClientView): boolean =>
-    (opp.completedSetColors || []).length > 0;
+    (opp.completedSetGroups || opp.completedSetColors || []).length > 0;
 
   const collectIncompleteProps = (
-    properties: Record<PropertyColor, Card[]> | undefined,
-    completed: PropertyColor[]
-  ): { cardId: string; color: PropertyColor; card: Card }[] =>
+    properties: Record<string, Card[]> | undefined,
+    completed: string[]
+  ): { cardId: string; color: string; card: Card }[] =>
     Object.entries(properties || {}).flatMap(([color, cards]) => {
       if (completed.includes(color as PropertyColor)) return [];
       return (cards || []).map((c) => ({ cardId: c.id, color: color as PropertyColor, card: c }));
@@ -124,20 +128,20 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
   const targetOpponent = opponents.find((opp) => opp.id === selectedTargetPlayer);
   // Cards eligible to steal (Sly Deal) or to request (Forced Deal) from the
   // currently selected target - excludes any complete set.
-  const stealableCards: { cardId: string; color: PropertyColor; card: Card }[] =
+  const stealableCards: { cardId: string; color: string; card: Card }[] =
     (isSlyDeal || isForcedDeal) && targetOpponent
-      ? collectIncompleteProps(targetOpponent.properties, targetOpponent.completedSetColors || [])
+      ? collectIncompleteProps(targetOpponent.properties, targetOpponent.completedSetGroups || targetOpponent.completedSetColors || [])
       : [];
   const selectedSteal = stealableCards.find((c) => c.cardId === selectedTargetCardId);
 
   // Forced Deal: the actor's own properties that may be offered - excludes any
   // complete set of their own.
-  const offerableCards: { cardId: string; color: PropertyColor; card: Card }[] = isForcedDeal
+  const offerableCards: { cardId: string; color: string; card: Card }[] = isForcedDeal
     ? collectIncompleteProps(selfProperties, selfCompletedSetColors || [])
     : [];
   const selectedOffer = offerableCards.find((c) => c.cardId === selectedOfferedCardId);
-  const stealableSets: { color: PropertyColor; cards: Card[] }[] = isDealBreaker && targetOpponent
-    ? (targetOpponent.completedSetColors || []).map((color) => ({
+  const stealableSets: { color: string; cards: Card[] }[] = isDealBreaker && targetOpponent
+    ? (targetOpponent.completedSetGroups || targetOpponent.completedSetColors || []).map((color) => ({
         color,
         cards: targetOpponent.properties?.[color] || []
       }))
@@ -155,11 +159,15 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
   const rentColors = Array.isArray(card.colors)
     ? card.colors.filter((color): color is PropertyColor => color !== 'ALL')
     : [];
-  const selectedRentColor = rentColors.includes(selectedColor) ? selectedColor : rentColors[0];
+  const rentGroups = Object.keys(selfProperties).filter(key => rentColors.includes(propertyGroupColor(key)));
+  const selectedRentColor = rentGroups.includes(selectedColor) ? selectedColor : rentGroups[0];
+  const placementColor = isWildcard ? propertyGroupColor(selectedColor) : card.color;
+  const placementGroups = placementColor ? [...new Set([placementColor, ...Object.keys(selfProperties).filter(key => propertyGroupColor(key) === placementColor), nextPropertyGroupKey(selfProperties, placementColor)])] : [];
+  const selectedPlacementGroup = placementGroups.includes(selectedColor) ? selectedColor : placementGroups[0];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6 animate-in fade-in zoom-in duration-150">
+      <div role="dialog" aria-modal="true" aria-label="Play card" className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-6 animate-in fade-in zoom-in duration-150">
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-xl font-black text-slate-100">Play Card Action</h2>
@@ -348,11 +356,17 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
           </div>
         )}
 
+        {(isProperty || isWildcard) && <label className="block text-xs text-sky-300">Property set
+          <select aria-label="Property set" value={selectedPlacementGroup} onChange={e => setSelectedColor(e.target.value)} className="block bg-slate-900 p-2 w-full">
+            {placementGroups.map(key => <option key={key} value={key}>{key}{!selfProperties[key] ? ' (new set)' : ''}</option>)}
+          </select>
+        </label>}
+
         {isRent && (
           <div>
             <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Charge Rent On</label>
             <div className="grid grid-cols-2 gap-2">
-              {rentColors.map((color) => {
+              {rentGroups.map((color) => {
                 const ownedCount = (selfProperties[color] || []).length;
                 const disabled = ownedCount === 0;
                 return (
@@ -381,6 +395,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
               />
               Double The Rent (uses 2 of your 3 plays)
             </label>
+            {canUseTwoDoublers && useDoubleRent && <label className="flex gap-2 text-xs text-purple-300"><input type="checkbox" checked={useTwoDoublers} onChange={e => setUseTwoDoublers(e.target.checked)} />Use both Double The Rent cards (4× rent, all 3 plays)</label>}
             {!canDoubleRent && (
               <p className="text-[11px] text-slate-400 mt-1">
                 {!doubleRentCard
@@ -457,13 +472,13 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
 
         {/* Play Action Buttons */}
         <div className="space-y-3 pt-2">
-          {/* Play as Cash in Bank */}
-          <button
+          {/* Property cards never enter the bank (E3113). */}
+          {!isProperty && !isWildcard && <button
             onClick={() => onPlay({ targetZone: 'bank' })}
             className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2"
           >
             💰 Deposit in Bank (${card.value}M Cash)
-          </button>
+          </button>}
 
           {/* Play as Property / Action */}
           {isProperty || isWildcard ? (
@@ -471,7 +486,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
               onClick={() =>
                 onPlay({
                   targetZone: 'properties',
-                  propertyColor: isWildcard ? selectedColor : card.color
+                  propertyColor: selectedPlacementGroup
                 })
               }
               className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2"
@@ -485,7 +500,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                 targetZone: 'action',
                 propertyColor: selectedRentColor,
                 targetPlayerId: isWildRent ? selectedTargetPlayer : undefined,
-                doubleRentCardId: canDoubleRent && useDoubleRent && doubleRentCard ? doubleRentCard.id : undefined
+                ...(canDoubleRent && useDoubleRent && doubleRentCard ? (useTwoDoublers && canUseTwoDoublers ? {doubleRentCardIds: doublers.slice(0,2).map(c => c.id)} : {doubleRentCardId: doubleRentCard.id}) : {})
               })}
               className="w-full py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2"
             >
@@ -554,11 +569,11 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
             <button
               disabled
               className="w-full py-3 bg-slate-700 text-slate-300 font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2 opacity-70 cursor-not-allowed"
-              title="This action card is not server-authoritative yet"
+              title={title === 'Just Say No' ? 'Use the response dialog when an action is played against you' : 'Unsupported action'}
             >
-              ⚠️ Action not ready ({card.title || card.name})
+              {title === 'Just Say No' ? 'Use when responding to an action' : `Unsupported action (${title})`}
             </button>
-          ) : (
+          ) : cardKind === 'MONEY' ? null : (
             <button
               disabled
               className="w-full py-3 bg-slate-700 text-slate-300 font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2 opacity-70 cursor-not-allowed"

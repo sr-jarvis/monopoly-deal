@@ -1,4 +1,4 @@
-import { Card, PropertyColor } from '@monopoly-deal/shared';
+import { Card, propertyGroupColor } from '@monopoly-deal/shared';
 import * as sfx from './soundEngine';
 
 export type DropZoneKind = 'BANK' | 'PROPERTY' | 'ACTION' | 'HAND';
@@ -19,7 +19,7 @@ export interface DragEligibilityContext {
 
 export interface DropZoneTarget {
   kind: DropZoneKind;
-  targetColor?: PropertyColor;
+  targetColor?: string;
   targetIndex?: number;
 }
 
@@ -89,10 +89,10 @@ export function isDropEligible(
       // If target color is specified, verify wildcard/property compatibility
       if (target.targetColor && target.targetColor !== 'ALL') {
         if (card.color) {
-          return card.color === target.targetColor;
+          return card.color === propertyGroupColor(target.targetColor);
         }
         if (card.colors && card.colors.length > 0) {
-          return card.colors.includes(target.targetColor);
+          return card.colors.includes(propertyGroupColor(target.targetColor));
         }
       }
       return true;

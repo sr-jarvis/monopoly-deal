@@ -3,3 +3,7 @@
 **/.git
 client-legacy-ionic
 *.log
+.delivery
+.env*
+.github
+server/test

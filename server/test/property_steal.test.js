@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 
-const game_manager = require('../game_manager');
+const game_manager = require('./support/accepted_actions');
 const { ACTION_TYPES } = require('../rules_validator');
 const ActionCard = require('../models/ActionCard');
 const PropertyCard = require('../models/PropertyCard');

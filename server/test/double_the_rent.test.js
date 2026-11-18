@@ -70,8 +70,8 @@ describe('Double The Rent — atomic with Rent', function () {
 
             assert.strictEqual(result.legal, true);
             const next = result.gameState;
-            // Plain full Brown rent = 2 (tier) x2 (full set) = 4; doubled = 8.
-            assert.strictEqual(next.pendingCharge.debtors.p2.amountOwed, 8);
+            // Printed full Brown rent = 2; Double The Rent makes it 4.
+            assert.strictEqual(next.pendingCharge.debtors.p2.amountOwed, 4);
             assert.strictEqual(next.pendingCharge.doubled, true);
             assert.strictEqual(next.pendingCharge.type, 'RENT');
             assert.strictEqual(next.pendingCharge.sourceTitle, 'Rent');
@@ -100,8 +100,8 @@ describe('Double The Rent — atomic with Rent', function () {
             const result = game_manager.applyAction(state, rentAction({ doubleRentCardId: 'dtr-1' }));
 
             assert.strictEqual(result.legal, true);
-            // (2 x2) + 3 (house) + 4 (hotel) = 11; doubled = 22.
-            assert.strictEqual(result.gameState.pendingCharge.debtors.p2.amountOwed, 22);
+            // Printed 2 + 3 (house) + 4 (hotel) = 9; doubled = 18.
+            assert.strictEqual(result.gameState.pendingCharge.debtors.p2.amountOwed, 18);
         });
 
         it('doubles the charge for every debtor of an all-opponent Rent', function () {
@@ -116,8 +116,8 @@ describe('Double The Rent — atomic with Rent', function () {
 
             assert.strictEqual(result.legal, true);
             assert.deepStrictEqual(Object.keys(result.gameState.pendingCharge.debtors).sort(), ['p2', 'p3']);
-            assert.strictEqual(result.gameState.pendingCharge.debtors.p2.amountOwed, 8);
-            assert.strictEqual(result.gameState.pendingCharge.debtors.p3.amountOwed, 8);
+            assert.strictEqual(result.gameState.pendingCharge.debtors.p2.amountOwed, 4);
+            assert.strictEqual(result.gameState.pendingCharge.debtors.p3.amountOwed, 4);
         });
 
         it('doubles an all-color Rent against the chosen target', function () {
@@ -136,8 +136,8 @@ describe('Double The Rent — atomic with Rent', function () {
 
             assert.strictEqual(result.legal, true);
             assert.deepStrictEqual(Object.keys(result.gameState.pendingCharge.debtors), ['p3']);
-            // Green tier for 3 cards = 7, x2 full set = 14; doubled = 28.
-            assert.strictEqual(result.gameState.pendingCharge.debtors.p3.amountOwed, 28);
+            // Printed Green tier for 3 cards = 7; doubled = 14.
+            assert.strictEqual(result.gameState.pendingCharge.debtors.p3.amountOwed, 14);
         });
     });
 
@@ -319,7 +319,7 @@ describe('Double The Rent — atomic with Rent', function () {
 
             assert.strictEqual(result.legal, true);
             const next = result.gameState;
-            assert.strictEqual(next.pendingCharge.debtors.p2.amountOwed, 4);
+            assert.strictEqual(next.pendingCharge.debtors.p2.amountOwed, 2);
             assert.strictEqual(next.pendingCharge.doubled, false);
             assert.strictEqual(next.turn.playsMade, 1);
             assert.ok(!next.players.p1.hand.some(c => c.id === 'rent-1'));
@@ -351,7 +351,7 @@ describe('Double The Rent — atomic with Rent', function () {
 
             const summary = buildActionEventSummary(room, action, previousGameState);
             assert.match(summary, /doubled/i);
-            assert.match(summary, /must pay \$8M/);
+            assert.match(summary, /must pay \$4M/);
         });
     });
 });

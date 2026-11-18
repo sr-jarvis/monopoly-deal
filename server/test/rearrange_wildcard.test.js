@@ -196,14 +196,14 @@ describe('Wildcard Rearrange — server-authoritative REARRANGE branch', functio
         assert.match(result.reason, /Only a wildcard may be rearranged/);
     });
 
-    it('rejects rearranging outside the ACTION/DISCARD phase (e.g. before drawing)', function () {
+    it('allows rearranging during own DRAW phase before mandatory draw', function () {
         const state = baseState(); // still in DRAW phase, p1 has not drawn
         state.players.p1.properties.Green = group([makeWildcard('wild-1', ['DarkBlue', 'Green'])]);
 
         const result = game_manager.applyAction(state, rearrange());
 
-        assert.strictEqual(result.legal, false);
-        assert.match(result.reason, /only allowed during your own turn/);
+        assert.strictEqual(result.legal, true);
+        assert.strictEqual(result.gameState.turn.phase, 'DRAW');
     });
 
     it('rejects a rearrange requested by a player whose turn it is not', function () {
@@ -217,7 +217,7 @@ describe('Wildcard Rearrange — server-authoritative REARRANGE branch', functio
     });
 
     ['hasHouse', 'hasHotel'].forEach((buildingFlag) => {
-        it(`rejects a wildcard move out of a ${buildingFlag === 'hasHouse' ? 'House' : 'Hotel'} set without mutating it`, function () {
+        it(`allows wild movement while preserving the physical ${buildingFlag === 'hasHouse' ? 'House' : 'Hotel'}`, function () {
             const state = actionPhaseState();
             state.players.p1.hand = [];
             state.players.p1.properties.Green = group(
@@ -226,15 +226,15 @@ describe('Wildcard Rearrange — server-authoritative REARRANGE branch', functio
                     makeProperty('g-2', 'Green'),
                     makeWildcard('wild-1', ['DarkBlue', 'Green'])
                 ],
-                { [buildingFlag]: true }
+                { [buildingFlag]: true, [buildingFlag === 'hasHouse' ? 'houseCard' : 'hotelCard']: {id:'building', kind:'ACTION', title:buildingFlag === 'hasHouse' ? 'House' : 'Hotel', value:3} }
             );
 
             const before = JSON.stringify(state);
             const result = game_manager.applyAction(state, rearrange());
 
-            assert.strictEqual(result.legal, false);
-            assert.match(result.reason, /House or Hotel/);
-            assert.strictEqual(result.gameState, undefined);
+            assert.strictEqual(result.legal, true);
+            assert.strictEqual(result.gameState.players.p1.properties.Green.cards.length, 2);
+            assert.strictEqual(result.gameState.players.p1.properties.Green[buildingFlag], true);
             assert.strictEqual(JSON.stringify(state), before);
         });
     });

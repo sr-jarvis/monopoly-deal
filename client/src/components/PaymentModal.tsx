@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Card, PropertyColor } from '@monopoly-deal/shared';
+import { Card, PropertyColor, BuildingState } from '@monopoly-deal/shared';
 import { CardView } from './CardView';
 import { dispatchRentPaymentStart } from '../utils/rentPaymentFlightEngine';
 
 interface PaymentModalProps {
   amountOwed: number;
   bankCards: Card[];
+  buildings?: BuildingState;
   propertyCards: Record<PropertyColor, Card[]>;
   onPay: (selectedCardIds: string[]) => void;
   mySeatId?: string;
@@ -16,6 +17,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   amountOwed,
   bankCards,
   propertyCards,
+  buildings,
   onPay,
   mySeatId = 'p1',
   chargerSeatId = 'p2',
@@ -23,7 +25,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Collect all available payment cards (bank + property)
-  const allProperties = Object.values(propertyCards).flat();
+  const allProperties = [...Object.values(propertyCards).flat(), ...Object.values(buildings || {}).flatMap(b => [b?.houseCard, b?.hotelCard].filter((c): c is Card => !!c))].filter(c => c.value > 0);
 
   const toggleSelectCard = (cardId: string) => {
     setSelectedIds((prev) =>
@@ -49,6 +51,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const isSufficient = currentTotal >= amountOwed || (mustPayAll && currentTotal === totalAssetsValue);
 
   const handlePay = () => {
+    if (!isSufficient) return;
     // Collect selected card objects
     const selectedBank = bankCards.filter((c) => selectedIds.includes(c.id));
     const selectedProps = allProperties.filter((c) => selectedIds.includes(c.id));
@@ -85,7 +88,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <span>💳</span> Payment Required
             </h2>
             <p className="text-xs text-slate-300 mt-1">
-              You owe <span className="font-bold text-amber-300">${amountOwed}M</span> in rent or debt demand.
+              No change is given. Pay only bank, property or placed building cards, never your hand. Valueless wilds cannot pay. You owe <span className="font-bold text-amber-300">${amountOwed}M</span> in rent or debt demand.
             </p>
           </div>
           <div className="text-right">
@@ -158,7 +161,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             }`}
           >
             {mustPayAll
-              ? `Surrender All Assets ($${totalAssetsValue}M)`
+              ? `Surrender All Payable Assets ($${totalAssetsValue}M)`
               : `Submit Payment ($${currentTotal}M)`}
           </button>
         </div>

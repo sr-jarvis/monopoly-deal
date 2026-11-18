@@ -57,6 +57,7 @@ function joinRoom(roomCode, socketId, displayName) {
         return { room };
     }
 
+    if (room.status !== 'LOBBY') return { error: 'Match already started. Reconnect using your existing session.' };
     if (room.seats.length >= 5) {
         return { error: 'Room is full' };
     }
@@ -136,6 +137,8 @@ function extractBuildings(properties) {
         if (!group || Array.isArray(group)) return;
         const entry = {};
         if (group.hasHouse) entry.house = true;
+        if (group.houseCard) entry.houseCard = group.houseCard;
+        if (group.hotelCard) entry.hotelCard = group.hotelCard;
         if (group.hasHotel) entry.hotel = true;
         if (Object.keys(entry).length > 0) buildings[color] = entry;
     });
@@ -168,7 +171,8 @@ function toClientView(room, forPlayerId) {
                 bank: p.bank || [],
                 properties: flattenPropertyGroups(p.properties),
                 buildings: extractBuildings(p.properties),
-                completedSetColors: completedSetColorsFor(p)
+                completedSetColors: completedSetColorsFor(p),
+                completedSetGroups: Object.keys(p.properties || {}).filter(key => require('./rules_validator').isCompletePropertySet(gs, id, key))
             };
         });
 
@@ -191,14 +195,15 @@ function toClientView(room, forPlayerId) {
             bank: selfPlayer.bank || [],
             properties: flattenPropertyGroups(selfPlayer.properties),
             buildings: extractBuildings(selfPlayer.properties),
-            completedSetColors: completedSetColorsFor(selfPlayer)
+            completedSetColors: completedSetColorsFor(selfPlayer),
+            completedSetGroups: Object.keys(selfPlayer.properties || {}).filter(key => require('./rules_validator').isCompletePropertySet(gs, forPlayerId, key))
         },
         opponents
     };
 
     // The debtor keeps the full settlement payload used by PaymentModal.
     const debtorEntry = gs.pendingCharge && gs.pendingCharge.debtors && gs.pendingCharge.debtors[forPlayerId];
-    if (debtorEntry) {
+    if (debtorEntry && !gs.pendingActionResolution) {
         view.pendingResolution = {
             type: gs.pendingCharge.type || 'CHARGE',
             sourceTitle: gs.pendingCharge.sourceTitle,
@@ -207,6 +212,11 @@ function toClientView(room, forPlayerId) {
             amountOwed: debtorEntry.amountOwed,
             fromPlayerId: gs.pendingCharge.fromPlayerId
         };
+    }
+
+    if (gs.pendingActionResolution) {
+        const { boardAfter, ...publicResponse } = gs.pendingActionResolution;
+        view.pendingActionResolution = publicResponse;
     }
 
     // Charges are public actions and the rules block all players until they

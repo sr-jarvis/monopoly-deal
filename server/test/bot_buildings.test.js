@@ -171,8 +171,8 @@ describe('Solo-Bot Building Cards — House & Hotel', function() {
       assert.strictEqual(res.legal, true);
       assert.strictEqual(res.gameState.players.bot1.properties.Green.hasHouse, true);
       assert.strictEqual(res.gameState.players.bot1.hand.length, 0);
-      assert.strictEqual(res.gameState.discardPile.length, 1);
-      assert.strictEqual(res.gameState.discardPile[0].id, 'house_1');
+      assert.strictEqual(res.gameState.discardPile.length, 0);
+      assert.strictEqual(res.gameState.players.bot1.properties.Green.houseCard.id, 'house_1');
     });
 
     it('applies bot Hotel play authoritatively after House is present', function() {
@@ -201,7 +201,7 @@ describe('Solo-Bot Building Cards — House & Hotel', function() {
       assert.strictEqual(res.legal, true);
       assert.strictEqual(res.gameState.players.bot1.properties.Green.hasHouse, true);
       assert.strictEqual(res.gameState.players.bot1.properties.Green.hasHotel, true);
-      assert.strictEqual(res.gameState.discardPile[0].id, 'hotel_1');
+      assert.strictEqual(res.gameState.players.bot1.properties.Green.hotelCard.id, 'hotel_1');
     });
   });
 });
