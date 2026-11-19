@@ -1138,6 +1138,56 @@ function driveBotTurns(roomCode) {
     }
 }
 
+// Shared synchronous startup: management and lobby starts use exactly the same deal.
+function startRoomMatch(room, roomCode) {
+        const formattedPlayers = room.seats.map(s => ({
+            id: s.playerId,
+            name: s.displayName
+        }));
+
+        room.gameState = game_manager.createGameState(formattedPlayers);
+        room.status = 'IN_PROGRESS';
+
+        // Auto-draw initial turn cards
+        const firstPlayerId = room.gameState.turn.playerId;
+        const drawResult = transport_game.applyAction(room.gameState, {
+            type: 'DRAW',
+            playerId: firstPlayerId,
+            count: 2
+        });
+        if (drawResult.legal) {
+            room.gameState = drawResult.gameState;
+        }
+
+        room.seq += 1;
+        console.log(`[Game] Match started in room ${roomCode}`);
+
+        // Broadcast room state and individual redacted game states
+        io.to(`room:${roomCode}`).emit('room:state', room_registry.toRoomState(room));
+
+        room.seats.forEach(s => {
+            if (s.isBot) return;
+            const clientState = room_registry.toClientView(room, s.playerId);
+            io.to(s.playerId).emit('game:state', clientState);
+        });
+
+        io.to(`room:${roomCode}`).emit('game:event', {
+            seq: room.seq,
+            ts: Date.now(),
+            playerId: firstPlayerId,
+            action: 'START',
+            summary: `Match started! It's ${room.gameState.players[firstPlayerId].name}'s turn.`
+        });
+
+        driveBotTurns(roomCode);
+}
+
+function returnRoomToLobby(room) {
+    room_registry.resetRoom(room.roomCode);
+    io.to(`room:${room.roomCode}`).emit('room:state', room_registry.toRoomState(room));
+    io.to(`room:${room.roomCode}`).emit('game:state', null);
+}
+
 io.on('connection', function(socket) {
     let credentials;
     try { credentials = require('./seat_sessions').acquire(socket.handshake.auth?.sessionToken, socket.id); }
@@ -1155,6 +1205,8 @@ io.on('connection', function(socket) {
         if (Date.now() - windowStart > 10000) { windowStart = Date.now(); messageCount = 0; }
         if (++messageCount > 100) return next(new Error('Too many messages'));
         const data = packet[1];
+        // Management validates its own payload and must acknowledge malformed requests.
+        if (packet[0] === 'room:manage') return next();
         if (data !== undefined && (data === null || typeof data !== 'object' || Array.isArray(data))) return next(new Error('Invalid payload'));
         if (data?.displayName !== undefined && (typeof data.displayName !== 'string' || data.displayName.length > 40)) return next(new Error('Invalid name'));
         next();
@@ -1264,46 +1316,28 @@ io.on('connection', function(socket) {
             return socket.emit('game:action-rejected', { reason: 'At least 2 players required' });
         }
 
-        const formattedPlayers = room.seats.map(s => ({
-            id: s.playerId,
-            name: s.displayName
-        }));
+        startRoomMatch(room, currentRoomCode);
+    });
 
-        room.gameState = game_manager.createGameState(formattedPlayers);
-        room.status = 'IN_PROGRESS';
-
-        // Auto-draw initial turn cards
-        const firstPlayerId = room.gameState.turn.playerId;
-        const drawResult = transport_game.applyAction(room.gameState, {
-            type: 'DRAW',
-            playerId: firstPlayerId,
-            count: 2
-        });
-        if (drawResult.legal) {
-            room.gameState = drawResult.gameState;
-        }
-
-        room.seq += 1;
-        console.log(`[Game] Match started in room ${currentRoomCode}`);
-
-        // Broadcast room state and individual redacted game states
-        io.to(`room:${currentRoomCode}`).emit('room:state', room_registry.toRoomState(room));
-
-        room.seats.forEach(s => {
-            if (s.isBot) return;
-            const clientState = room_registry.toClientView(room, s.playerId);
-            io.to(s.playerId).emit('game:state', clientState);
-        });
-
-        io.to(`room:${currentRoomCode}`).emit('game:event', {
-            seq: room.seq,
-            ts: Date.now(),
-            playerId: firstPlayerId,
-            action: 'START',
-            summary: `Match started! It's ${room.gameState.players[firstPlayerId].name}'s turn.`
-        });
-
-        driveBotTurns(currentRoomCode);
+    // The current match ID is a compare-and-swap token. No async work may
+    // intervene between authorization/version validation and replacement.
+    socket.on('room:manage', function(data, acknowledge) {
+        const reply = result => {
+            if (typeof acknowledge === 'function') acknowledge(result);
+            else if (!result.ok) socket.emit('game:action-rejected', { reason: result.reason });
+        };
+        if (!data || typeof data !== 'object' || Array.isArray(data) ||
+            !['end', 'restart'].includes(data.operation) || typeof data.roomCode !== 'string' ||
+            typeof data.matchId !== 'string' || !data.matchId) return reply({ ok: false, reason: 'Invalid match control request' });
+        if (data.roomCode !== currentRoomCode) return reply({ ok: false, reason: 'Not in this room' });
+        const room = room_registry.getRoom(currentRoomCode);
+        if (!room || room.hostPlayerId !== playerId || !room.seats.some(s => s.playerId === playerId)) return reply({ ok: false, reason: 'Only the seated host can manage the match' });
+        if (!['IN_PROGRESS', 'FINISHED'].includes(room.status) || !room.gameState || room.gameState.matchId !== data.matchId) return reply({ ok: false, reason: 'Match changed. Refresh before managing it.' });
+        if (data.operation === 'restart') {
+            if (room.seats.length < 2) return reply({ ok: false, reason: 'At least 2 players required' });
+            startRoomMatch(room, currentRoomCode);
+        } else returnRoomToLobby(room);
+        reply({ ok: true });
     });
 
     // room:rematch / room:reset
@@ -1321,6 +1355,7 @@ io.on('connection', function(socket) {
             return socket.emit('game:action-rejected', { reason: 'Must be seated in room to request rematch' });
         }
 
+        if (roomCode !== currentRoomCode || room.status !== 'FINISHED' || room.gameState?.status !== 'FINISHED') return socket.emit('game:action-rejected', { reason: 'Rematch requires a finished match in your current room' });
         if (!room.seats.some(s => s.playerId === playerId)) return socket.emit('game:action-rejected', { reason: 'Must be seated in room' });
         const resetRes = room_registry.resetRoom(roomCode);
         if (resetRes.error) {
@@ -1349,6 +1384,8 @@ io.on('connection', function(socket) {
         if (!room) return socket.emit('game:action-rejected', { reason: 'Room not found' });
 
         if (!room.seats.some(s => s.playerId === playerId)) return socket.emit('game:action-rejected', { reason: 'Must be seated in room' });
+        if (roomCode !== currentRoomCode || room.hostPlayerId !== playerId) return socket.emit('game:action-rejected', { reason: 'Only the current room host can reset' });
+        if (room.gameState && (typeof data?.matchId !== 'string' || data.matchId !== room.gameState.matchId)) return socket.emit('game:action-rejected', { reason: 'Current match ID required to reset' });
         const resetRes = room_registry.resetRoom(roomCode);
         if (resetRes.error) {
             return socket.emit('game:action-rejected', { reason: resetRes.error });
@@ -1426,9 +1463,7 @@ io.on('connection', function(socket) {
         if (!room) return;
 
         socket.emit('room:state', room_registry.toRoomState(room));
-        if (room.gameState) {
-            socket.emit('game:state', room_registry.toClientView(room, playerId));
-        }
+        socket.emit('game:state', room_registry.toClientView(room, playerId));
     });
 });
 

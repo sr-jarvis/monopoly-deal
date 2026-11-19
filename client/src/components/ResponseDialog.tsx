@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Card, PendingActionResponse } from '@monopoly-deal/shared';
 
 interface Props {
+  settings?: React.ReactNode;
   response: PendingActionResponse;
   selfId: string;
   hand: Card[];
@@ -10,7 +11,7 @@ interface Props {
 }
 
 /** Only the nominated responder acts; all other seats see a waiting status. */
-export const ResponseDialog: React.FC<Props> = ({ response, selfId, hand, onAccept, onCounter }) => {
+export const ResponseDialog: React.FC<Props> = ({ response, selfId, hand, onAccept, onCounter, settings }) => {
   const acceptRef = useRef<HTMLButtonElement>(null);
   const canRespond = response.eligibleResponderIds.includes(selfId);
   useEffect(() => { if (canRespond) acceptRef.current?.focus(); }, [canRespond, response.responseCount]);
@@ -23,12 +24,15 @@ export const ResponseDialog: React.FC<Props> = ({ response, selfId, hand, onAcce
   return (
     <div className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4">
       <section onKeyDown={event => {
-        if (event.key !== 'Tab') return;
-        const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
+        // Native Settings owns keyboard containment while its top-layer dialog
+        // is open. Do not pull focus back into the underlying response.
+        if (event.key !== 'Tab' || (event.target instanceof HTMLElement && event.target.closest('dialog[open]'))) return;
+        const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button')).filter(button => button.getClientRects().length > 0);
         const first = buttons[0], last = buttons[buttons.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }} role="dialog" aria-modal="true" aria-labelledby="response-title" className="bg-slate-800 border border-amber-500 rounded-2xl p-6 max-w-md space-y-4">
+        {settings}
         <h2 id="response-title" className="text-xl font-bold">Respond to {response.sourceTitle}</h2>
         <p>{response.cancelled ? 'Just Say No cancelled this action. Counter it to restore the action, or pass to confirm cancellation.' : 'Accept this action, or play a held Just Say No to cancel it. The other player may counter.'}</p>
         <p className="text-sm text-slate-300">Responses do not use any of your three plays. Targeted properties stay in place and payments wait until this response is resolved.</p>

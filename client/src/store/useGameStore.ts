@@ -66,10 +66,10 @@ export const useGameStore = create<GameStoreState>((set) => ({
       ...(roomState?.status === 'LOBBY' ? { gameState: null, gameOver: null } : {})
     }),
   setGameState: (gameState) =>
-    set({
+    set((state) => ({
       gameState,
-      ...(gameState === null ? { gameOver: null } : {})
-    }),
+      ...(gameState === null || state.gameState?.matchId !== gameState.matchId ? { gameOver: null, events: [] } : {})
+    })),
   setGameOver: (gameOver) => set({ gameOver }),
   addEvent: (event) => set((state) => ({ events: [event, ...state.events].slice(0, 50) })),
   addToast: (message, type = 'info') => {

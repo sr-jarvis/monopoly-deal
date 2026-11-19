@@ -97,6 +97,21 @@ describe('first match UI refinements',()=>{
   assert.equal(engine.consume({...missed,drawEvents:[{id:6,playerId:'p2',count:2,kind:'DRAW'}]},options).batches.length,1);
   assert.equal(engine.consume(initial(2,'rematch'),options).shuffleAt,1000);
  });
+ it('animates a new live match identity once without needing another lobby; reconnect stays suppressed',()=>{
+  global.window={sessionStorage:{getItem:()=>null,setItem(){}},matchMedia:()=>({matches:false})};
+  try {
+   const {drawPresentation:present}=loader()('client/src/utils/drawPresentation.ts');
+   present.witnessLobby();present.receive(initial());
+   assert.equal(present.getSnapshot().batches.length,3);
+   present.receive(initial(2,'restarted'));
+   assert.equal(present.getSnapshot().batches.length,3,'fresh direct restart must deal exactly5+5+2');
+   assert.notEqual(present.getSnapshot().shuffleAt,null);
+   present.receive(initial(2,'restarted'));
+   assert.equal(present.getSnapshot().batches.length,3,'duplicate restart snapshot must not add flights');
+   present.disconnect();present.receive(initial(2,'missed-during-reconnect'));
+   assert.equal(present.getSnapshot().batches.length,0,'disconnected backlog is historical');
+  } finally {delete global.window;}
+ });
  it('consumes reduced-motion events without any shuffle or flights and bounds persisted history',()=>{
   const data=new Map();const storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
   const engine=new DrawOrchestrator(storage);
@@ -127,6 +142,18 @@ describe('first match UI refinements',()=>{
  it('bounds the playfield grid with an explicit zero-minimum column instead of a min-content implicit track',()=>{
   const board=fs.readFileSync(path.resolve(__dirname,'../../client/src/components/GameBoardView.tsx'),'utf8');
   assert.ok(board.includes('grid-cols-[minmax(0,1fr)]'),'Native two-seat mobile grid must not inherit hand toolbar min-content width');
+ });
+ it('keeps host settings inside each mandatory gameplay dialog without resolving it',()=>{
+  for (const [file,name,props] of [
+   ['ResponseDialog','ResponseDialog',{response:{eligibleResponderIds:['self'],sourceTitle:'Debt Collector',responseCount:0},selfId:'self',hand:[],onAccept(){},onCounter(){}}],
+   ['PaymentModal','PaymentModal',{amountOwed:5,bankCards:[],propertyCards:{},onPay(){}}],
+   ['DiscardModal','DiscardModal',{hand:Array.from({length:8},(_,i)=>({id:String(i),kind:'MONEY',title:'1M',value:1})),onDiscard(){}}],
+   ['WinModal','WinModal',{gameOver:{winnerId:'self'},selfId:'self',selfDisplayName:'Host',opponents:[],onRematch(){},onLeaveRoom(){}}]
+  ]) {
+   const Component=load(`client/src/components/${file}.tsx`)[name];
+   const html=renderToStaticMarkup(React.createElement(Component,{...props,settings:React.createElement('button',{},'Host settings test')}));
+   assert.match(html,/Host settings test/,`${file} must keep management reachable`);
+  }
  });
  it('renders settings with a native keyboard-contained dialog and no active-match replay or visual shuffle',()=>{
   const {GameSettings}=load('client/src/components/GameSettings.tsx');

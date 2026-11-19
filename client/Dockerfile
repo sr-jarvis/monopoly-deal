@@ -9,7 +9,12 @@ RUN npm ci
 
 COPY client ./client
 ARG APP_REVISION=development
-RUN npm run build:client && printf '%s\n' "$APP_REVISION" > client/dist/revision.txt
+# Public output must remain readable by the nonroot nginx runtime even when
+# the source archive was extracted with a restrictive umask. Never widen source
+# or runtime configuration permissions; only normalize the published web root.
+RUN npm run build:client && printf '%s\n' "$APP_REVISION" > client/dist/revision.txt \
+    && find client/dist -type d -exec chmod 755 {} + \
+    && find client/dist -type f -exec chmod 644 {} +
 
 FROM nginxinc/nginx-unprivileged:alpine
 ARG APP_REVISION=development

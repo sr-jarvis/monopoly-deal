@@ -4,6 +4,7 @@ import { CardView } from './CardView';
 import { dispatchRentPaymentStart } from '../utils/rentPaymentFlightEngine';
 
 interface PaymentModalProps {
+  settings?: React.ReactNode;
   amountOwed: number;
   bankCards: Card[];
   buildings?: BuildingState;
@@ -14,6 +15,7 @@ interface PaymentModalProps {
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
+  settings,
   amountOwed,
   bankCards,
   propertyCards,
@@ -82,6 +84,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
       <div role="dialog" aria-modal="true" aria-label="Payment required" className="min-w-0 bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90dvh] flex flex-col">
+        {settings}
         <div className="flex flex-wrap gap-3 justify-between items-start border-b border-slate-700 pb-3 shrink-0">
           <div>
             <h2 className="text-xl font-black text-rose-400 uppercase tracking-wider flex items-center gap-2">

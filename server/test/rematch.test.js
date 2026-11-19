@@ -134,7 +134,11 @@ describe('Rematch & Lobby State Persistence — Socket.IO Flow', function() {
             }
           });
 
-          // Request rematch
+          // A rematch is a post-game action; active abandonment is host-only
+          // and versioned through room:manage, tested in room_match_controls.
+          const finished = room_registry.getRoom(roomCode);
+          finished.status = 'FINISHED';
+          finished.gameState.status = 'FINISHED';
           client1.emit('room:rematch', { roomCode });
         });
       });

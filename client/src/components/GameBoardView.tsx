@@ -37,7 +37,7 @@ import { getActiveDragPayload, isDropEligible, DRAG_EVENTS, DragCardPayload, Dro
 import { handleTouchStart, handleTouchMove, handleTouchEnd } from '../utils/touchDragEngine';
 
 export const GameBoardView: React.FC = () => {
-  const { gameState, roomCode, events, gameOver, resetMatch, displayName } = useGameStore();
+  const { gameState, roomState, roomCode, events, gameOver, resetMatch, displayName } = useGameStore();
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [previewCard, setPreviewCard] = useState<Card | null>(null);
   const [rearrangeTarget, setRearrangeTarget] = useState<{ card: Card; color: string } | null>(null);
@@ -49,6 +49,15 @@ export const GameBoardView: React.FC = () => {
   // Drag & Drop Highlight States
   const [isBankDragOver, setIsBankDragOver] = useState(false);
   const [isActionDragOver, setIsActionDragOver] = useState(false);
+
+  useEffect(() => {
+    setActiveCard(null);
+    setPreviewCard(null);
+    setRearrangeTarget(null);
+    setShowReplay(false);
+    setIsBankDragOver(false);
+    setIsActionDragOver(false);
+  }, [gameState?.matchId]);
 
   if (!gameState) return null;
 
@@ -312,6 +321,12 @@ export const GameBoardView: React.FC = () => {
   const selfBankTotal = gameState.self.bank.reduce((sum, c) => sum + (c.value || 0), 0);
   const playableCount = isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment ? rawHand.length : 0;
 
+  const hostMatch = gameState.matchId && roomState && roomState.roomCode === gameState.roomCode && roomState.hostPlayerId === gameState.self.id && ['IN_PROGRESS', 'FINISHED'].includes(roomState.status)
+    ? { roomCode: gameState.roomCode, matchId: gameState.matchId } : undefined;
+  const settingsDialog = pendingResponse?.eligibleResponderIds.includes(gameState.self.id) ? 'response'
+    : gameOver ? 'win' : isDiscardPhase ? 'discard' : selfOwesPayment && !pendingResponse ? 'payment' : null;
+  const settings = <GameSettings onLeaderboard={() => setShowLeaderboard(true)} onReplay={gameOver ? () => setShowReplay(true) : undefined} hostMatch={hostMatch} />;
+
   return (
     <div className="min-h-screen md:h-screen w-full flex flex-col bg-slate-950 text-slate-100 p-2 md:p-4 gap-3 md:gap-4 overflow-x-hidden md:overflow-hidden">
       {/* Top Navigation & Status Bar */}
@@ -325,7 +340,7 @@ export const GameBoardView: React.FC = () => {
           </div>
         </div>
 
-        <GameSettings onLeaderboard={() => setShowLeaderboard(true)} onReplay={gameOver ? () => setShowReplay(true) : undefined} />
+        {!(hostMatch && settingsDialog) && settings}
       </div>
       <div role="status" aria-label="Turn status" className="md-turn-status">
         <strong>{isMyTurn ? 'YOUR TURN' : `${gameState.opponents.find(o => o.id === gameState.currentTurnPlayerId)?.displayName || 'Opponent'}'s turn`}</strong>
@@ -611,12 +626,15 @@ export const GameBoardView: React.FC = () => {
       )}
 
       {pendingResponse && <ResponseDialog response={pendingResponse} selfId={gameState.self.id} hand={gameState.self.hand}
+        settings={hostMatch && settingsDialog === 'response' ? settings : undefined}
         onAccept={() => socketService.emit('game:action', { type: 'ACCEPT_ACTION' })}
         onCounter={(cardId) => socketService.emit('game:action', { type: 'JUST_SAY_NO', cardId })} />}
 
       {/* Payment Modal */}
       {selfOwesPayment && !pendingResponse && gameState.pendingResolution && (
         <PaymentModal
+          key={gameState.matchId}
+          settings={hostMatch && settingsDialog === 'payment' ? settings : undefined}
           amountOwed={gameState.pendingResolution.amountOwed || 0}
           bankCards={gameState.self.bank}
           propertyCards={gameState.self.properties}
@@ -636,6 +654,8 @@ export const GameBoardView: React.FC = () => {
       {/* Discard Modal */}
       {isDiscardPhase && (
         <DiscardModal
+          key={gameState.matchId}
+          settings={hostMatch && settingsDialog === 'discard' ? settings : undefined}
           hand={gameState.self.hand}
           onDiscard={(cardIds) => {
             sfx.playCardPlay();
@@ -647,6 +667,7 @@ export const GameBoardView: React.FC = () => {
       {/* Win Modal */}
       {gameOver && (
         <WinModal
+          settings={hostMatch && settingsDialog === 'win' ? settings : undefined}
           gameOver={gameOver}
           selfId={gameState.self.id}
           opponents={gameState.opponents}
