@@ -3,6 +3,7 @@ import { GameOverPayload, PlayerClientView } from '@monopoly-deal/shared';
 import { ReplayViewerModal } from './ReplayViewerModal';
 
 interface WinModalProps {
+  settings?: React.ReactNode;
   gameOver: GameOverPayload;
   selfId: string;
   opponents: PlayerClientView[];
@@ -12,6 +13,7 @@ interface WinModalProps {
 }
 
 export const WinModal: React.FC<WinModalProps> = ({
+  settings,
   gameOver,
   selfId,
   opponents,
@@ -27,7 +29,8 @@ export const WinModal: React.FC<WinModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div role="dialog" aria-modal="true" aria-label="Game over" className="bg-slate-800 border-2 border-slate-700 rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
+      <div role="dialog" aria-modal="true" aria-label="Game over" className="bg-slate-800 border-2 border-slate-700 rounded-3xl p-4 sm:p-8 max-w-lg w-full max-h-[90dvh] overflow-y-auto text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
+        {settings}
         <div className="text-6xl animate-bounce">
           {isWinner ? '🏆' : '👑'}
         </div>

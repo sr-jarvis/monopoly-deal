@@ -20,4 +20,20 @@ jobs:
       - run: npm --workspace=client run lint
       - run: npm audit --omit=dev
       - run: docker build --build-arg APP_REVISION=${{ github.sha }} -f server/Dockerfile -t monopoly-server:check .
+      # Reproduce a source archive extracted under umask077 before packaging.
+      - run: find client/public -type f -exec chmod 600 {} +
       - run: docker build --build-arg APP_REVISION=${{ github.sha }} -f client/Dockerfile -t monopoly-client:check .
+      - name: Verify complete nonroot runtime artwork
+        run: |
+          set -eu
+          trap 'docker rm -f artwork-client artwork-server >/dev/null 2>&1 || true; docker network rm artwork-check >/dev/null 2>&1 || true' EXIT
+          docker network create artwork-check
+          docker run -d --name artwork-server --network artwork-check --network-alias server monopoly-server:check
+          docker run -d --name artwork-client --network artwork-check -p 127.0.0.1:18089:8080 monopoly-client:check
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18089/revision.txt; then break; fi
+            sleep 1
+          done
+          test "$(docker exec artwork-client id -u)" != 0
+          docker exec artwork-client sh -c 'find /usr/share/nginx/html/assets/imgs -type f -exec sh -c '\''for f do test -r "$f" || exit 1; done'\'' sh {} +'
+          python3 scripts/verify-artwork.py http://127.0.0.1:18089 artwork-check.json

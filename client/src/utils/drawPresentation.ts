@@ -76,10 +76,11 @@ export class DrawOrchestrator {
 let orchestrator: DrawOrchestrator | undefined;
 let snapshot = EMPTY_PRESENTATION;
 let startup = false;
+let liveMatchId: string | undefined;
 const listeners = new Set<() => void>();
 export const drawPresentation = {
   witnessLobby() { startup = true; },
-  disconnect() { startup = false; orchestrator?.disconnect(); snapshot = EMPTY_PRESENTATION; listeners.forEach(fn => fn()); },
+  disconnect() { startup = false; liveMatchId = undefined; orchestrator?.disconnect(); snapshot = EMPTY_PRESENTATION; listeners.forEach(fn => fn()); },
   receive(state: GameClientState) {
     if (!orchestrator) {
       let storage: StorageLike | undefined;
@@ -88,7 +89,11 @@ export const drawPresentation = {
     }
     const now = Date.now();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const next = orchestrator.consume(state, { startup, reducedMotion, now });
+    // A different identity on this uninterrupted connection is a witnessed
+    // restart, not reconnect history. Persisted watermarks still prevent replay.
+    const witnessedRestart = !!liveMatchId && liveMatchId !== state.matchId;
+    const next = orchestrator.consume(state, { startup: startup || witnessedRestart, reducedMotion, now });
+    liveMatchId = state.matchId;
     startup = false;
     const retained = reducedMotion ? [] : snapshot.batches.filter(b => b.matchId === state.matchId && b.endAt > now);
     snapshot = { batches: [...retained, ...next.batches], shuffleAt: reducedMotion ? null : next.shuffleAt ?? (snapshot.shuffleAt !== null && snapshot.shuffleAt + 700 > now ? snapshot.shuffleAt : null) };

@@ -4,11 +4,12 @@ import { CardView } from './CardView';
 import { scheduleDiscardCascade } from '../utils/cardDiscardFlightEngine';
 
 interface DiscardModalProps {
+  settings?: React.ReactNode;
   hand: Card[];
   onDiscard: (discardCardIds: string[]) => void;
 }
 
-export const DiscardModal: React.FC<DiscardModalProps> = ({ hand, onDiscard }) => {
+export const DiscardModal: React.FC<DiscardModalProps> = ({ hand, onDiscard, settings }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const cardsToDiscardCount = hand.length - 7;
 
@@ -42,7 +43,8 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ hand, onDiscard }) =
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-6">
+      <div role="dialog" aria-modal="true" aria-label="Discard required" className="min-w-0 bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[90dvh] overflow-y-auto">
+        {settings}
         <div className="flex justify-between items-start border-b border-slate-700 pb-3">
           <div>
             <h2 className="text-xl font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
