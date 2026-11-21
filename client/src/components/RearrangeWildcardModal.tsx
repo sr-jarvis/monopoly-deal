@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, propertyGroupColor, nextPropertyGroupKey } from '@monopoly-deal/shared';
-import { CardView } from './CardView';
+import { AtlasCardDialog } from './AtlasCardDialog';
 
 interface RearrangeWildcardModalProps {
   card: Card;
@@ -27,27 +27,11 @@ export const RearrangeWildcardModal: React.FC<RearrangeWildcardModalProps> = ({
   const [selected, setSelected] = useState<string>('');
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6 animate-in fade-in zoom-in duration-150">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-xl font-black text-slate-100">Rearrange Wildcard</h2>
-            <p className="text-xs text-slate-400">
-              Move this wildcard out of your {humanize(currentColor)} set. Rearranging is a free
-              action and doesn&apos;t use a play.
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white text-lg font-bold px-2 py-0.5 rounded-lg bg-slate-700/50"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex justify-center">
-          <CardView card={card} size="lg" />
-        </div>
+    <AtlasCardDialog card={card} title="Rearrange Wildcard" onClose={onClose}>
+      <p className="text-sm">
+        Move this wildcard out of your {humanize(currentColor)} set. Rearranging is a free
+        action and doesn&apos;t use a play.
+      </p>
 
         <div>
           <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">
@@ -61,6 +45,7 @@ export const RearrangeWildcardModal: React.FC<RearrangeWildcardModalProps> = ({
                 <button
                   key={col}
                   onClick={() => setSelected(col)}
+                  aria-pressed={selected === col}
                   className={`p-2 rounded-lg text-xs font-bold border transition text-center ${
                     selected === col
                       ? 'bg-amber-600 border-amber-400 text-white shadow-lg'
@@ -81,7 +66,6 @@ export const RearrangeWildcardModal: React.FC<RearrangeWildcardModalProps> = ({
         >
           ↔ Move Wildcard{selected ? ` to ${humanize(selected)}` : ''}
         </button>
-      </div>
-    </div>
+    </AtlasCardDialog>
   );
 };

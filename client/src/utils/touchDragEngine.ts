@@ -25,6 +25,11 @@ export interface TouchDragState {
 const TOUCH_DRAG_THRESHOLD_PX = 8;
 const GHOST_ELEMENT_ID = 'md-touch-drag-ghost';
 
+/** Vertical movement belongs to the scrollable hand; drag starts sideways. */
+export function shouldStartTouchDrag(dx: number, dy: number): boolean {
+  return Math.abs(dx) >= TOUCH_DRAG_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.25;
+}
+
 let touchState: TouchDragState = {
   touchId: null,
   startX: 0,
@@ -141,9 +146,7 @@ export function handleTouchMove(
 
   const dx = touchState.currentX - touchState.startX;
   const dy = touchState.currentY - touchState.startY;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (!touchState.isDragActive && dist >= TOUCH_DRAG_THRESHOLD_PX) {
+  if (!touchState.isDragActive && shouldStartTouchDrag(dx, dy)) {
     touchState.isDragActive = true;
     setActiveDragPayload(touchState.payload);
     sfx.playCardDraw();
@@ -194,9 +197,7 @@ export function handleTouchEnd(
     if (onDropCallback) {
       onDropCallback(touchState.payload, touchState.hoveredTarget);
       sfx.playCardPlay();
-    }
-
-    if (typeof window !== 'undefined') {
+    } else if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent(DRAG_EVENTS.DROP, {
           detail: { payload: touchState.payload, target: touchState.hoveredTarget }

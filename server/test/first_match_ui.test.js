@@ -51,7 +51,7 @@ describe('first match UI refinements',()=>{
  });
  it('orients the printed dual-wild image to its public group, including a second group',()=>{
   const {PropertyGroupView}=load('client/src/components/PropertyGroupView.tsx');
-  const card={id:'w',kind:'WILDCARD',title:'Red & Yellow',colors:['Red','Yellow'],value:3};
+  const card={id:'w',kind:'WILDCARD',title:'Property Wild Card',colors:['Red','Yellow'],value:3};
   const html=renderToStaticMarkup(React.createElement(PropertyGroupView,{color:'Yellow#2',cards:[card]}));
   assert.match(html,/data-property-rotation="180"/);
   assert.match(html,/rotate\(180deg\)/);
@@ -141,7 +141,11 @@ describe('first match UI refinements',()=>{
  });
  it('bounds the playfield grid with an explicit zero-minimum column instead of a min-content implicit track',()=>{
   const board=fs.readFileSync(path.resolve(__dirname,'../../client/src/components/GameBoardView.tsx'),'utf8');
-  assert.ok(board.includes('grid-cols-[minmax(0,1fr)]'),'Native two-seat mobile grid must not inherit hand toolbar min-content width');
+  const css=fs.readFileSync(path.resolve(__dirname,'../../client/src/index.css'),'utf8');
+  assert.ok(board.includes('className="atlas-workspace"'),'Public table has an independently bounded workspace');
+  assert.match(css,/\.atlas-workspace\s*\{[^}]*min-width:0;[^}]*overflow:auto/,'Workspace must not inherit hand min-content width');
+  assert.match(css,/grid-template-rows:auto auto minmax\(0,1fr\) auto/,'Table scrolls inside a zero-minimum viewport track');
+  assert.match(css,/\.atlas-hand-grid\s*\{[^}]*repeat\(2,minmax\(0,1fr\)\)/,'Hand uses two zero-minimum artwork columns');
  });
  it('keeps host settings inside each mandatory gameplay dialog without resolving it',()=>{
   for (const [file,name,props] of [
