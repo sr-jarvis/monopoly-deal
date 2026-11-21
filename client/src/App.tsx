@@ -85,8 +85,8 @@ export function App() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 relative selection:bg-sky-500 selection:text-white">
       {/* Toast Overlay */}
-      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm pointer-events-none">
-        {toasts.map((toast) => (
+      <div role="status" aria-live="polite" className="fixed top-32 right-4 z-[140] space-y-2 max-w-[min(24rem,calc(100vw-2rem))] pointer-events-none">
+        {toasts.filter(toast => !gameState || toast.type === 'error').map((toast) => (
           <div
             key={toast.id}
             className={`p-3 rounded-xl border shadow-2xl text-xs font-semibold backdrop-blur-md pointer-events-none transition-all ${

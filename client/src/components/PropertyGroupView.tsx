@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, PropertyColor, propertyGroupColor } from '@monopoly-deal/shared';
 import { CardView } from './CardView';
+import { propertyRentSummary } from '../utils/vectorArtwork';
 import { getActiveDragPayload, isDropEligible } from '../utils/dragAndDropEngine';
 
 interface PropertyGroupViewProps {
@@ -144,6 +145,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
         {`${COLOR_NAMES[propertyGroupColor(color)]}${color.includes('#') ? ' #' + color.split('#')[1] : ''}`} ({cards.length})
       </div>
 
+      <p className="atlas-group-summary">{propertyRentSummary(propertyGroupColor(color), cards.length, !!isCompleteSet, !!hasHouse, !!hasHotel)}</p>
       {/* Building Badges */}
       {(hasHouse || hasHotel) && (
         <div className="flex gap-1 mb-2">
@@ -192,6 +194,7 @@ export const PropertyGroupView: React.FC<PropertyGroupViewProps> = ({
               onClick={onCardClick ? () => onCardClick(card) : undefined}
               onPreview={onPreviewCard ? () => onPreviewCard(card) : undefined}
             />
+            <div className="atlas-card-caption"><strong>{card.title || card.name}</strong><small>{card.value}M · {COLOR_NAMES[propertyGroupColor(color)]}</small></div>
           </div>
         ))}
       </div>

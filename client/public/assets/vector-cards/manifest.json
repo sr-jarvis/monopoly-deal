@@ -1,0 +1,1470 @@
+{
+  "design": "Pocket Atlas original vectors",
+  "dimensions": [
+    360,
+    560
+  ],
+  "sources": {
+    "server/models/Deck.js": "cb505335a0e7d4dc3ec4e3c9de965fbbec5eaebbfba352f0f962600b7490ae75",
+    "server/models/Card.js": "0ea7139e1b3aba3a4045087c9d8560650c071e363e79d0f74390c7aecfdf114d",
+    "server/models/PropertyCard.js": "443f9be41f6bd7ce369be8255162235d943b67444f32f1892456b35e93195212",
+    "server/models/Wildcard.js": "83d70c56ce6d4b92ebc719ba4bf7971edaf1f137a4c286ef8b340db230e9a234",
+    "server/models/RentCard.js": "a88498a808d6bfbfb9b5138ecd5d8b38024b726b85260eae9c313523a33d26d8",
+    "server/models/ActionCard.js": "ae35a88d47f0eeacb04fd22bab62efad0a36c74c1890d26b13db8d9400ed25b1",
+    "server/models/MoneyCard.js": "abdc78117b7ec90f681b52626c1f25b61293c8480134752fb27a05134b3f34d0",
+    "server/models/PropertyType.js": "109e9a527680ed2ffe598608461b9d65e384abf25053e58a8178296eb28283c5",
+    "server/card_catalog.js": "35e9cb1050a09df18e615d85193a3a2dfb33bccf44825cbadd8537c571ea251a",
+    "server/fixtures/hasbro-b0965-catalog.json": "e40508f635c4e00c7557b14068439d67a80b4a2dba5758c5ec64502f9db8dfd2",
+    "client/src/utils/publicWildcardOrientation.ts": "1b53b23150cf2259f76bd2ac20ff5dc0f3ecd2db05916309e8c7a42810f14c92",
+    "client/src/utils/touchCardFlipEngine.ts": "71d4acca308393c97d58e67d7e84881b404adba40179d0537df36914ab99193e",
+    "scripts/generate-vector-cards.py": "f674c24b821a925d74e6d9812bf1f61640950268f4a51dd82018551d42b4ed40"
+  },
+  "instances": [
+    {
+      "instance": 1,
+      "face": "action_cards-dealbreaker",
+      "png": "/assets/imgs/action_cards/DealBreaker.png",
+      "svg": "/assets/vector-cards/action_cards-dealbreaker.svg"
+    },
+    {
+      "instance": 2,
+      "face": "action_cards-doubletherent",
+      "png": "/assets/imgs/action_cards/DoubleTheRent.png",
+      "svg": "/assets/vector-cards/action_cards-doubletherent.svg"
+    },
+    {
+      "instance": 3,
+      "face": "action_cards-dealbreaker",
+      "png": "/assets/imgs/action_cards/DealBreaker.png",
+      "svg": "/assets/vector-cards/action_cards-dealbreaker.svg"
+    },
+    {
+      "instance": 4,
+      "face": "action_cards-doubletherent",
+      "png": "/assets/imgs/action_cards/DoubleTheRent.png",
+      "svg": "/assets/vector-cards/action_cards-doubletherent.svg"
+    },
+    {
+      "instance": 5,
+      "face": "action_cards-justsayno",
+      "png": "/assets/imgs/action_cards/JustSayNo.png",
+      "svg": "/assets/vector-cards/action_cards-justsayno.svg"
+    },
+    {
+      "instance": 6,
+      "face": "action_cards-slydeal",
+      "png": "/assets/imgs/action_cards/SlyDeal.png",
+      "svg": "/assets/vector-cards/action_cards-slydeal.svg"
+    },
+    {
+      "instance": 7,
+      "face": "action_cards-debtcollector",
+      "png": "/assets/imgs/action_cards/DebtCollector.png",
+      "svg": "/assets/vector-cards/action_cards-debtcollector.svg"
+    },
+    {
+      "instance": 8,
+      "face": "action_cards-itsmybirthday",
+      "png": "/assets/imgs/action_cards/ItsMyBirthday.png",
+      "svg": "/assets/vector-cards/action_cards-itsmybirthday.svg"
+    },
+    {
+      "instance": 9,
+      "face": "action_cards-house",
+      "png": "/assets/imgs/action_cards/House.png",
+      "svg": "/assets/vector-cards/action_cards-house.svg"
+    },
+    {
+      "instance": 10,
+      "face": "action_cards-forceddeal",
+      "png": "/assets/imgs/action_cards/ForcedDeal.png",
+      "svg": "/assets/vector-cards/action_cards-forceddeal.svg"
+    },
+    {
+      "instance": 11,
+      "face": "action_cards-justsayno",
+      "png": "/assets/imgs/action_cards/JustSayNo.png",
+      "svg": "/assets/vector-cards/action_cards-justsayno.svg"
+    },
+    {
+      "instance": 12,
+      "face": "action_cards-slydeal",
+      "png": "/assets/imgs/action_cards/SlyDeal.png",
+      "svg": "/assets/vector-cards/action_cards-slydeal.svg"
+    },
+    {
+      "instance": 13,
+      "face": "action_cards-debtcollector",
+      "png": "/assets/imgs/action_cards/DebtCollector.png",
+      "svg": "/assets/vector-cards/action_cards-debtcollector.svg"
+    },
+    {
+      "instance": 14,
+      "face": "action_cards-itsmybirthday",
+      "png": "/assets/imgs/action_cards/ItsMyBirthday.png",
+      "svg": "/assets/vector-cards/action_cards-itsmybirthday.svg"
+    },
+    {
+      "instance": 15,
+      "face": "action_cards-house",
+      "png": "/assets/imgs/action_cards/House.png",
+      "svg": "/assets/vector-cards/action_cards-house.svg"
+    },
+    {
+      "instance": 16,
+      "face": "action_cards-forceddeal",
+      "png": "/assets/imgs/action_cards/ForcedDeal.png",
+      "svg": "/assets/vector-cards/action_cards-forceddeal.svg"
+    },
+    {
+      "instance": 17,
+      "face": "action_cards-justsayno",
+      "png": "/assets/imgs/action_cards/JustSayNo.png",
+      "svg": "/assets/vector-cards/action_cards-justsayno.svg"
+    },
+    {
+      "instance": 18,
+      "face": "action_cards-slydeal",
+      "png": "/assets/imgs/action_cards/SlyDeal.png",
+      "svg": "/assets/vector-cards/action_cards-slydeal.svg"
+    },
+    {
+      "instance": 19,
+      "face": "action_cards-debtcollector",
+      "png": "/assets/imgs/action_cards/DebtCollector.png",
+      "svg": "/assets/vector-cards/action_cards-debtcollector.svg"
+    },
+    {
+      "instance": 20,
+      "face": "action_cards-itsmybirthday",
+      "png": "/assets/imgs/action_cards/ItsMyBirthday.png",
+      "svg": "/assets/vector-cards/action_cards-itsmybirthday.svg"
+    },
+    {
+      "instance": 21,
+      "face": "action_cards-house",
+      "png": "/assets/imgs/action_cards/House.png",
+      "svg": "/assets/vector-cards/action_cards-house.svg"
+    },
+    {
+      "instance": 22,
+      "face": "action_cards-forceddeal",
+      "png": "/assets/imgs/action_cards/ForcedDeal.png",
+      "svg": "/assets/vector-cards/action_cards-forceddeal.svg"
+    },
+    {
+      "instance": 23,
+      "face": "action_cards-hotel",
+      "png": "/assets/imgs/action_cards/Hotel.png",
+      "svg": "/assets/vector-cards/action_cards-hotel.svg"
+    },
+    {
+      "instance": 24,
+      "face": "action_cards-hotel",
+      "png": "/assets/imgs/action_cards/Hotel.png",
+      "svg": "/assets/vector-cards/action_cards-hotel.svg"
+    },
+    {
+      "instance": 25,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 26,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 27,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 28,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 29,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 30,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 31,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 32,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 33,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 34,
+      "face": "action_cards-passgo",
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg"
+    },
+    {
+      "instance": 35,
+      "face": "property_cards-northcarolinaavenue",
+      "png": "/assets/imgs/property_cards/NorthCarolinaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-northcarolinaavenue.svg"
+    },
+    {
+      "instance": 36,
+      "face": "property_cards-pacificavenue",
+      "png": "/assets/imgs/property_cards/PacificAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-pacificavenue.svg"
+    },
+    {
+      "instance": 37,
+      "face": "property_cards-pennsylvaniaavenue",
+      "png": "/assets/imgs/property_cards/PennsylvaniaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-pennsylvaniaavenue.svg"
+    },
+    {
+      "instance": 38,
+      "face": "property_cards-boardwalk",
+      "png": "/assets/imgs/property_cards/Boardwalk.png",
+      "svg": "/assets/vector-cards/property_cards-boardwalk.svg"
+    },
+    {
+      "instance": 39,
+      "face": "property_cards-parkplace",
+      "png": "/assets/imgs/property_cards/ParkPlace.png",
+      "svg": "/assets/vector-cards/property_cards-parkplace.svg"
+    },
+    {
+      "instance": 40,
+      "face": "property_cards-connecticutavenue",
+      "png": "/assets/imgs/property_cards/ConnecticutAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-connecticutavenue.svg"
+    },
+    {
+      "instance": 41,
+      "face": "property_cards-orientalavenue",
+      "png": "/assets/imgs/property_cards/OrientalAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-orientalavenue.svg"
+    },
+    {
+      "instance": 42,
+      "face": "property_cards-vermontavenue",
+      "png": "/assets/imgs/property_cards/VermontAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-vermontavenue.svg"
+    },
+    {
+      "instance": 43,
+      "face": "property_cards-kentuckyavenue",
+      "png": "/assets/imgs/property_cards/KentuckyAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-kentuckyavenue.svg"
+    },
+    {
+      "instance": 44,
+      "face": "property_cards-indianaavenue",
+      "png": "/assets/imgs/property_cards/IndianaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-indianaavenue.svg"
+    },
+    {
+      "instance": 45,
+      "face": "property_cards-illinoisavenue",
+      "png": "/assets/imgs/property_cards/IllinoisAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-illinoisavenue.svg"
+    },
+    {
+      "instance": 46,
+      "face": "property_cards-shortline",
+      "png": "/assets/imgs/property_cards/ShortLine.png",
+      "svg": "/assets/vector-cards/property_cards-shortline.svg"
+    },
+    {
+      "instance": 47,
+      "face": "property_cards-b-orailroad",
+      "png": "/assets/imgs/property_cards/B&ORailroad.png",
+      "svg": "/assets/vector-cards/property_cards-b-orailroad.svg"
+    },
+    {
+      "instance": 48,
+      "face": "property_cards-readingrailroad",
+      "png": "/assets/imgs/property_cards/ReadingRailroad.png",
+      "svg": "/assets/vector-cards/property_cards-readingrailroad.svg"
+    },
+    {
+      "instance": 49,
+      "face": "property_cards-pennsylvaniarailroad",
+      "png": "/assets/imgs/property_cards/PennsylvaniaRailroad.png",
+      "svg": "/assets/vector-cards/property_cards-pennsylvaniarailroad.svg"
+    },
+    {
+      "instance": 50,
+      "face": "property_cards-ventnoravenue",
+      "png": "/assets/imgs/property_cards/VentnorAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-ventnoravenue.svg"
+    },
+    {
+      "instance": 51,
+      "face": "property_cards-marvingardens",
+      "png": "/assets/imgs/property_cards/MarvinGardens.png",
+      "svg": "/assets/vector-cards/property_cards-marvingardens.svg"
+    },
+    {
+      "instance": 52,
+      "face": "property_cards-atlanticavenue",
+      "png": "/assets/imgs/property_cards/AtlanticAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-atlanticavenue.svg"
+    },
+    {
+      "instance": 53,
+      "face": "property_cards-newyorkavenue",
+      "png": "/assets/imgs/property_cards/NewYorkAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-newyorkavenue.svg"
+    },
+    {
+      "instance": 54,
+      "face": "property_cards-stjamesplace",
+      "png": "/assets/imgs/property_cards/StJamesPlace.png",
+      "svg": "/assets/vector-cards/property_cards-stjamesplace.svg"
+    },
+    {
+      "instance": 55,
+      "face": "property_cards-tennesseeavenue",
+      "png": "/assets/imgs/property_cards/TennesseeAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-tennesseeavenue.svg"
+    },
+    {
+      "instance": 56,
+      "face": "property_cards-balticavenue",
+      "png": "/assets/imgs/property_cards/BalticAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-balticavenue.svg"
+    },
+    {
+      "instance": 57,
+      "face": "property_cards-mediterraneanavenue",
+      "png": "/assets/imgs/property_cards/MediterraneanAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-mediterraneanavenue.svg"
+    },
+    {
+      "instance": 58,
+      "face": "property_cards-stcharlesplace",
+      "png": "/assets/imgs/property_cards/StCharlesPlace.png",
+      "svg": "/assets/vector-cards/property_cards-stcharlesplace.svg"
+    },
+    {
+      "instance": 59,
+      "face": "property_cards-virginiaavenue",
+      "png": "/assets/imgs/property_cards/VirginiaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-virginiaavenue.svg"
+    },
+    {
+      "instance": 60,
+      "face": "property_cards-statesavenue",
+      "png": "/assets/imgs/property_cards/StatesAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-statesavenue.svg"
+    },
+    {
+      "instance": 61,
+      "face": "property_cards-waterworks",
+      "png": "/assets/imgs/property_cards/WaterWorks.png",
+      "svg": "/assets/vector-cards/property_cards-waterworks.svg"
+    },
+    {
+      "instance": 62,
+      "face": "property_cards-electriccompany",
+      "png": "/assets/imgs/property_cards/ElectricCompany.png",
+      "svg": "/assets/vector-cards/property_cards-electriccompany.svg"
+    },
+    {
+      "instance": 63,
+      "face": "wildcards-darkblue-green",
+      "png": "/assets/imgs/wildcards/DarkBlue&Green.png",
+      "svg": "/assets/vector-cards/wildcards-darkblue-green.svg"
+    },
+    {
+      "instance": 64,
+      "face": "wildcards-lightblue-brown",
+      "png": "/assets/imgs/wildcards/LightBlue&Brown.png",
+      "svg": "/assets/vector-cards/wildcards-lightblue-brown.svg"
+    },
+    {
+      "instance": 65,
+      "face": "wildcards-lightblue-railroad",
+      "png": "/assets/imgs/wildcards/LightBlue&Railroad.png",
+      "svg": "/assets/vector-cards/wildcards-lightblue-railroad.svg"
+    },
+    {
+      "instance": 66,
+      "face": "wildcards-railroad-green",
+      "png": "/assets/imgs/wildcards/Railroad&Green.png",
+      "svg": "/assets/vector-cards/wildcards-railroad-green.svg"
+    },
+    {
+      "instance": 67,
+      "face": "wildcards-railroad-utility",
+      "png": "/assets/imgs/wildcards/Railroad&Utility.png",
+      "svg": "/assets/vector-cards/wildcards-railroad-utility.svg"
+    },
+    {
+      "instance": 68,
+      "face": "wildcards-purple-orange",
+      "png": "/assets/imgs/wildcards/Purple&Orange.png",
+      "svg": "/assets/vector-cards/wildcards-purple-orange.svg"
+    },
+    {
+      "instance": 69,
+      "face": "wildcards-red-yellow",
+      "png": "/assets/imgs/wildcards/Red&Yellow.png",
+      "svg": "/assets/vector-cards/wildcards-red-yellow.svg"
+    },
+    {
+      "instance": 70,
+      "face": "wildcards-all",
+      "png": "/assets/imgs/wildcards/All.png",
+      "svg": "/assets/vector-cards/wildcards-all.svg"
+    },
+    {
+      "instance": 71,
+      "face": "wildcards-purple-orange",
+      "png": "/assets/imgs/wildcards/Purple&Orange.png",
+      "svg": "/assets/vector-cards/wildcards-purple-orange.svg"
+    },
+    {
+      "instance": 72,
+      "face": "wildcards-red-yellow",
+      "png": "/assets/imgs/wildcards/Red&Yellow.png",
+      "svg": "/assets/vector-cards/wildcards-red-yellow.svg"
+    },
+    {
+      "instance": 73,
+      "face": "wildcards-all",
+      "png": "/assets/imgs/wildcards/All.png",
+      "svg": "/assets/vector-cards/wildcards-all.svg"
+    },
+    {
+      "instance": 74,
+      "face": "rent_cards-purple-orange",
+      "png": "/assets/imgs/rent_cards/Purple&Orange.png",
+      "svg": "/assets/vector-cards/rent_cards-purple-orange.svg"
+    },
+    {
+      "instance": 75,
+      "face": "rent_cards-railroad-utility",
+      "png": "/assets/imgs/rent_cards/Railroad&Utility.png",
+      "svg": "/assets/vector-cards/rent_cards-railroad-utility.svg"
+    },
+    {
+      "instance": 76,
+      "face": "rent_cards-darkblue-green",
+      "png": "/assets/imgs/rent_cards/DarkBlue&Green.png",
+      "svg": "/assets/vector-cards/rent_cards-darkblue-green.svg"
+    },
+    {
+      "instance": 77,
+      "face": "rent_cards-lightblue-brown",
+      "png": "/assets/imgs/rent_cards/LightBlue&Brown.png",
+      "svg": "/assets/vector-cards/rent_cards-lightblue-brown.svg"
+    },
+    {
+      "instance": 78,
+      "face": "rent_cards-red-yellow",
+      "png": "/assets/imgs/rent_cards/Red&Yellow.png",
+      "svg": "/assets/vector-cards/rent_cards-red-yellow.svg"
+    },
+    {
+      "instance": 79,
+      "face": "rent_cards-purple-orange",
+      "png": "/assets/imgs/rent_cards/Purple&Orange.png",
+      "svg": "/assets/vector-cards/rent_cards-purple-orange.svg"
+    },
+    {
+      "instance": 80,
+      "face": "rent_cards-railroad-utility",
+      "png": "/assets/imgs/rent_cards/Railroad&Utility.png",
+      "svg": "/assets/vector-cards/rent_cards-railroad-utility.svg"
+    },
+    {
+      "instance": 81,
+      "face": "rent_cards-darkblue-green",
+      "png": "/assets/imgs/rent_cards/DarkBlue&Green.png",
+      "svg": "/assets/vector-cards/rent_cards-darkblue-green.svg"
+    },
+    {
+      "instance": 82,
+      "face": "rent_cards-lightblue-brown",
+      "png": "/assets/imgs/rent_cards/LightBlue&Brown.png",
+      "svg": "/assets/vector-cards/rent_cards-lightblue-brown.svg"
+    },
+    {
+      "instance": 83,
+      "face": "rent_cards-red-yellow",
+      "png": "/assets/imgs/rent_cards/Red&Yellow.png",
+      "svg": "/assets/vector-cards/rent_cards-red-yellow.svg"
+    },
+    {
+      "instance": 84,
+      "face": "rent_cards-all",
+      "png": "/assets/imgs/rent_cards/All.png",
+      "svg": "/assets/vector-cards/rent_cards-all.svg"
+    },
+    {
+      "instance": 85,
+      "face": "rent_cards-all",
+      "png": "/assets/imgs/rent_cards/All.png",
+      "svg": "/assets/vector-cards/rent_cards-all.svg"
+    },
+    {
+      "instance": 86,
+      "face": "rent_cards-all",
+      "png": "/assets/imgs/rent_cards/All.png",
+      "svg": "/assets/vector-cards/rent_cards-all.svg"
+    },
+    {
+      "instance": 87,
+      "face": "money_cards-10m",
+      "png": "/assets/imgs/money_cards/10M.png",
+      "svg": "/assets/vector-cards/money_cards-10m.svg"
+    },
+    {
+      "instance": 88,
+      "face": "money_cards-5m",
+      "png": "/assets/imgs/money_cards/5M.png",
+      "svg": "/assets/vector-cards/money_cards-5m.svg"
+    },
+    {
+      "instance": 89,
+      "face": "money_cards-5m",
+      "png": "/assets/imgs/money_cards/5M.png",
+      "svg": "/assets/vector-cards/money_cards-5m.svg"
+    },
+    {
+      "instance": 90,
+      "face": "money_cards-4m",
+      "png": "/assets/imgs/money_cards/4M.png",
+      "svg": "/assets/vector-cards/money_cards-4m.svg"
+    },
+    {
+      "instance": 91,
+      "face": "money_cards-3m",
+      "png": "/assets/imgs/money_cards/3M.png",
+      "svg": "/assets/vector-cards/money_cards-3m.svg"
+    },
+    {
+      "instance": 92,
+      "face": "money_cards-4m",
+      "png": "/assets/imgs/money_cards/4M.png",
+      "svg": "/assets/vector-cards/money_cards-4m.svg"
+    },
+    {
+      "instance": 93,
+      "face": "money_cards-3m",
+      "png": "/assets/imgs/money_cards/3M.png",
+      "svg": "/assets/vector-cards/money_cards-3m.svg"
+    },
+    {
+      "instance": 94,
+      "face": "money_cards-4m",
+      "png": "/assets/imgs/money_cards/4M.png",
+      "svg": "/assets/vector-cards/money_cards-4m.svg"
+    },
+    {
+      "instance": 95,
+      "face": "money_cards-3m",
+      "png": "/assets/imgs/money_cards/3M.png",
+      "svg": "/assets/vector-cards/money_cards-3m.svg"
+    },
+    {
+      "instance": 96,
+      "face": "money_cards-2m",
+      "png": "/assets/imgs/money_cards/2M.png",
+      "svg": "/assets/vector-cards/money_cards-2m.svg"
+    },
+    {
+      "instance": 97,
+      "face": "money_cards-2m",
+      "png": "/assets/imgs/money_cards/2M.png",
+      "svg": "/assets/vector-cards/money_cards-2m.svg"
+    },
+    {
+      "instance": 98,
+      "face": "money_cards-2m",
+      "png": "/assets/imgs/money_cards/2M.png",
+      "svg": "/assets/vector-cards/money_cards-2m.svg"
+    },
+    {
+      "instance": 99,
+      "face": "money_cards-2m",
+      "png": "/assets/imgs/money_cards/2M.png",
+      "svg": "/assets/vector-cards/money_cards-2m.svg"
+    },
+    {
+      "instance": 100,
+      "face": "money_cards-2m",
+      "png": "/assets/imgs/money_cards/2M.png",
+      "svg": "/assets/vector-cards/money_cards-2m.svg"
+    },
+    {
+      "instance": 101,
+      "face": "money_cards-1m",
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    },
+    {
+      "instance": 102,
+      "face": "money_cards-1m",
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    },
+    {
+      "instance": 103,
+      "face": "money_cards-1m",
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    },
+    {
+      "instance": 104,
+      "face": "money_cards-1m",
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    },
+    {
+      "instance": 105,
+      "face": "money_cards-1m",
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    },
+    {
+      "instance": 106,
+      "face": "money_cards-1m",
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    }
+  ],
+  "faces": [
+    {
+      "key": "action_cards-dealbreaker",
+      "title": "Deal Breaker",
+      "kind": "ACTION",
+      "value": 5,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/DealBreaker.png",
+      "svg": "/assets/vector-cards/action_cards-dealbreaker.svg",
+      "description": "Steals a complete set of properties from any player. (Includes any buildings) Play into center to use."
+    },
+    {
+      "key": "action_cards-debtcollector",
+      "title": "Debt Collector",
+      "kind": "ACTION",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/DebtCollector.png",
+      "svg": "/assets/vector-cards/action_cards-debtcollector.svg",
+      "description": "Force any player to pay you 5M. Play into center to use."
+    },
+    {
+      "key": "action_cards-doubletherent",
+      "title": "Double The Rent",
+      "kind": "ACTION",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/DoubleTheRent.png",
+      "svg": "/assets/vector-cards/action_cards-doubletherent.svg",
+      "description": "Needs to played with a rent card. Play into center to use."
+    },
+    {
+      "key": "action_cards-forceddeal",
+      "title": "Forced Deal",
+      "kind": "ACTION",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/ForcedDeal.png",
+      "svg": "/assets/vector-cards/action_cards-forceddeal.svg",
+      "description": "Swap any property with another player. (Cannot be part of a full set) Play into center to use."
+    },
+    {
+      "key": "action_cards-hotel",
+      "title": "Hotel",
+      "kind": "ACTION",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/Hotel.png",
+      "svg": "/assets/vector-cards/action_cards-hotel.svg",
+      "description": "Add onto any full set you own to add 4M to the rent value. (Except railroads and Utility)"
+    },
+    {
+      "key": "action_cards-house",
+      "title": "House",
+      "kind": "ACTION",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/House.png",
+      "svg": "/assets/vector-cards/action_cards-house.svg",
+      "description": "Add onto any full set you own to add 3M to the rent value. (Except railroads and Utility)"
+    },
+    {
+      "key": "action_cards-itsmybirthday",
+      "title": "Its My Birthday",
+      "kind": "ACTION",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/ItsMyBirthday.png",
+      "svg": "/assets/vector-cards/action_cards-itsmybirthday.svg",
+      "description": "All players give you 2M as a 'gift'. Play into center to use."
+    },
+    {
+      "key": "action_cards-justsayno",
+      "title": "Just Say No",
+      "kind": "ACTION",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/JustSayNo.png",
+      "svg": "/assets/vector-cards/action_cards-justsayno.svg",
+      "description": "Use any time when an action card is played against you. Play into center to use."
+    },
+    {
+      "key": "action_cards-passgo",
+      "title": "Pass Go",
+      "kind": "ACTION",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/PassGo.png",
+      "svg": "/assets/vector-cards/action_cards-passgo.svg",
+      "description": "Draw 2 extra cards. Play into center to use."
+    },
+    {
+      "key": "action_cards-slydeal",
+      "title": "Sly Deal",
+      "kind": "ACTION",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/action_cards/SlyDeal.png",
+      "svg": "/assets/vector-cards/action_cards-slydeal.svg",
+      "description": "Steal a property from the player of your choice. (Cannot be part of a full set) Play into center to use."
+    },
+    {
+      "key": "money_cards-10m",
+      "title": "10M",
+      "kind": "MONEY",
+      "value": 10,
+      "colors": [],
+      "png": "/assets/imgs/money_cards/10M.png",
+      "svg": "/assets/vector-cards/money_cards-10m.svg"
+    },
+    {
+      "key": "money_cards-1m",
+      "title": "1M",
+      "kind": "MONEY",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/money_cards/1M.png",
+      "svg": "/assets/vector-cards/money_cards-1m.svg"
+    },
+    {
+      "key": "money_cards-2m",
+      "title": "2M",
+      "kind": "MONEY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/money_cards/2M.png",
+      "svg": "/assets/vector-cards/money_cards-2m.svg"
+    },
+    {
+      "key": "money_cards-3m",
+      "title": "3M",
+      "kind": "MONEY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/money_cards/3M.png",
+      "svg": "/assets/vector-cards/money_cards-3m.svg"
+    },
+    {
+      "key": "money_cards-4m",
+      "title": "4M",
+      "kind": "MONEY",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/money_cards/4M.png",
+      "svg": "/assets/vector-cards/money_cards-4m.svg"
+    },
+    {
+      "key": "money_cards-5m",
+      "title": "5M",
+      "kind": "MONEY",
+      "value": 5,
+      "colors": [],
+      "png": "/assets/imgs/money_cards/5M.png",
+      "svg": "/assets/vector-cards/money_cards-5m.svg"
+    },
+    {
+      "key": "property_cards-atlanticavenue",
+      "title": "Atlantic Avenue",
+      "kind": "PROPERTY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/AtlanticAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-atlanticavenue.svg",
+      "color": "Yellow",
+      "rentTiers": [
+        2,
+        4,
+        6
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-b-orailroad",
+      "title": "B & O Railroad",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/B&ORailroad.png",
+      "svg": "/assets/vector-cards/property_cards-b-orailroad.svg",
+      "color": "Railroad",
+      "rentTiers": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "completeSetSize": 4
+    },
+    {
+      "key": "property_cards-balticavenue",
+      "title": "Baltic Avenue",
+      "kind": "PROPERTY",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/BalticAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-balticavenue.svg",
+      "color": "Brown",
+      "rentTiers": [
+        1,
+        2
+      ],
+      "completeSetSize": 2
+    },
+    {
+      "key": "property_cards-boardwalk",
+      "title": "Boardwalk",
+      "kind": "PROPERTY",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/Boardwalk.png",
+      "svg": "/assets/vector-cards/property_cards-boardwalk.svg",
+      "color": "DarkBlue",
+      "rentTiers": [
+        3,
+        8
+      ],
+      "completeSetSize": 2
+    },
+    {
+      "key": "property_cards-connecticutavenue",
+      "title": "Connecticut Avenue",
+      "kind": "PROPERTY",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/ConnecticutAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-connecticutavenue.svg",
+      "color": "LightBlue",
+      "rentTiers": [
+        1,
+        2,
+        3
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-electriccompany",
+      "title": "Electric Company",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/ElectricCompany.png",
+      "svg": "/assets/vector-cards/property_cards-electriccompany.svg",
+      "color": "Utility",
+      "rentTiers": [
+        1,
+        2
+      ],
+      "completeSetSize": 2
+    },
+    {
+      "key": "property_cards-illinoisavenue",
+      "title": "Illinois Avenue",
+      "kind": "PROPERTY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/IllinoisAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-illinoisavenue.svg",
+      "color": "Red",
+      "rentTiers": [
+        2,
+        3,
+        6
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-indianaavenue",
+      "title": "Indiana Avenue",
+      "kind": "PROPERTY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/IndianaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-indianaavenue.svg",
+      "color": "Red",
+      "rentTiers": [
+        2,
+        3,
+        6
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-kentuckyavenue",
+      "title": "Kentucky Avenue",
+      "kind": "PROPERTY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/KentuckyAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-kentuckyavenue.svg",
+      "color": "Red",
+      "rentTiers": [
+        2,
+        3,
+        6
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-marvingardens",
+      "title": "Marvin Gardens",
+      "kind": "PROPERTY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/MarvinGardens.png",
+      "svg": "/assets/vector-cards/property_cards-marvingardens.svg",
+      "color": "Yellow",
+      "rentTiers": [
+        2,
+        4,
+        6
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-mediterraneanavenue",
+      "title": "Mediterranean Avenue",
+      "kind": "PROPERTY",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/MediterraneanAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-mediterraneanavenue.svg",
+      "color": "Brown",
+      "rentTiers": [
+        1,
+        2
+      ],
+      "completeSetSize": 2
+    },
+    {
+      "key": "property_cards-newyorkavenue",
+      "title": "New York Avenue",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/NewYorkAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-newyorkavenue.svg",
+      "color": "Orange",
+      "rentTiers": [
+        1,
+        3,
+        5
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-northcarolinaavenue",
+      "title": "North Carolina Avenue",
+      "kind": "PROPERTY",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/NorthCarolinaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-northcarolinaavenue.svg",
+      "color": "Green",
+      "rentTiers": [
+        2,
+        4,
+        7
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-orientalavenue",
+      "title": "Oriental Avenue",
+      "kind": "PROPERTY",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/OrientalAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-orientalavenue.svg",
+      "color": "LightBlue",
+      "rentTiers": [
+        1,
+        2,
+        3
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-pacificavenue",
+      "title": "Pacific Avenue",
+      "kind": "PROPERTY",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/PacificAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-pacificavenue.svg",
+      "color": "Green",
+      "rentTiers": [
+        2,
+        4,
+        7
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-parkplace",
+      "title": "Park Place",
+      "kind": "PROPERTY",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/ParkPlace.png",
+      "svg": "/assets/vector-cards/property_cards-parkplace.svg",
+      "color": "DarkBlue",
+      "rentTiers": [
+        3,
+        8
+      ],
+      "completeSetSize": 2
+    },
+    {
+      "key": "property_cards-pennsylvaniaavenue",
+      "title": "Pennsylvania Avenue",
+      "kind": "PROPERTY",
+      "value": 4,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/PennsylvaniaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-pennsylvaniaavenue.svg",
+      "color": "Green",
+      "rentTiers": [
+        2,
+        4,
+        7
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-pennsylvaniarailroad",
+      "title": "Pennsylvania Railroad",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/PennsylvaniaRailroad.png",
+      "svg": "/assets/vector-cards/property_cards-pennsylvaniarailroad.svg",
+      "color": "Railroad",
+      "rentTiers": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "completeSetSize": 4
+    },
+    {
+      "key": "property_cards-readingrailroad",
+      "title": "Reading Railroad",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/ReadingRailroad.png",
+      "svg": "/assets/vector-cards/property_cards-readingrailroad.svg",
+      "color": "Railroad",
+      "rentTiers": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "completeSetSize": 4
+    },
+    {
+      "key": "property_cards-shortline",
+      "title": "Short Line",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/ShortLine.png",
+      "svg": "/assets/vector-cards/property_cards-shortline.svg",
+      "color": "Railroad",
+      "rentTiers": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "completeSetSize": 4
+    },
+    {
+      "key": "property_cards-stcharlesplace",
+      "title": "St Charles Place",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/StCharlesPlace.png",
+      "svg": "/assets/vector-cards/property_cards-stcharlesplace.svg",
+      "color": "Purple",
+      "rentTiers": [
+        1,
+        2,
+        4
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-stjamesplace",
+      "title": "St James Place",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/StJamesPlace.png",
+      "svg": "/assets/vector-cards/property_cards-stjamesplace.svg",
+      "color": "Orange",
+      "rentTiers": [
+        1,
+        3,
+        5
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-statesavenue",
+      "title": "States Avenue",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/StatesAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-statesavenue.svg",
+      "color": "Purple",
+      "rentTiers": [
+        1,
+        2,
+        4
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-tennesseeavenue",
+      "title": "Tennessee Avenue",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/TennesseeAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-tennesseeavenue.svg",
+      "color": "Orange",
+      "rentTiers": [
+        1,
+        3,
+        5
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-ventnoravenue",
+      "title": "Ventnor Avenue",
+      "kind": "PROPERTY",
+      "value": 3,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/VentnorAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-ventnoravenue.svg",
+      "color": "Yellow",
+      "rentTiers": [
+        2,
+        4,
+        6
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-vermontavenue",
+      "title": "Vermont Avenue",
+      "kind": "PROPERTY",
+      "value": 1,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/VermontAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-vermontavenue.svg",
+      "color": "LightBlue",
+      "rentTiers": [
+        1,
+        2,
+        3
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-virginiaavenue",
+      "title": "Virginia Avenue",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/VirginiaAvenue.png",
+      "svg": "/assets/vector-cards/property_cards-virginiaavenue.svg",
+      "color": "Purple",
+      "rentTiers": [
+        1,
+        2,
+        4
+      ],
+      "completeSetSize": 3
+    },
+    {
+      "key": "property_cards-waterworks",
+      "title": "Water Works",
+      "kind": "PROPERTY",
+      "value": 2,
+      "colors": [],
+      "png": "/assets/imgs/property_cards/WaterWorks.png",
+      "svg": "/assets/vector-cards/property_cards-waterworks.svg",
+      "color": "Utility",
+      "rentTiers": [
+        1,
+        2
+      ],
+      "completeSetSize": 2
+    },
+    {
+      "key": "rent_cards-all",
+      "title": "Rent",
+      "kind": "RENT",
+      "value": 3,
+      "colors": [
+        "Green",
+        "DarkBlue",
+        "LightBlue",
+        "Red",
+        "Railroad",
+        "Yellow",
+        "Orange",
+        "Brown",
+        "Purple",
+        "Utility"
+      ],
+      "png": "/assets/imgs/rent_cards/All.png",
+      "svg": "/assets/vector-cards/rent_cards-all.svg"
+    },
+    {
+      "key": "rent_cards-darkblue-green",
+      "title": "Rent",
+      "kind": "RENT",
+      "value": 1,
+      "colors": [
+        "DarkBlue",
+        "Green"
+      ],
+      "png": "/assets/imgs/rent_cards/DarkBlue&Green.png",
+      "svg": "/assets/vector-cards/rent_cards-darkblue-green.svg",
+      "topColor": "Green",
+      "bottomColor": "DarkBlue"
+    },
+    {
+      "key": "rent_cards-lightblue-brown",
+      "title": "Rent",
+      "kind": "RENT",
+      "value": 1,
+      "colors": [
+        "LightBlue",
+        "Brown"
+      ],
+      "png": "/assets/imgs/rent_cards/LightBlue&Brown.png",
+      "svg": "/assets/vector-cards/rent_cards-lightblue-brown.svg",
+      "topColor": "Brown",
+      "bottomColor": "LightBlue"
+    },
+    {
+      "key": "rent_cards-purple-orange",
+      "title": "Rent",
+      "kind": "RENT",
+      "value": 1,
+      "colors": [
+        "Purple",
+        "Orange"
+      ],
+      "png": "/assets/imgs/rent_cards/Purple&Orange.png",
+      "svg": "/assets/vector-cards/rent_cards-purple-orange.svg",
+      "topColor": "Orange",
+      "bottomColor": "Purple"
+    },
+    {
+      "key": "rent_cards-railroad-utility",
+      "title": "Rent",
+      "kind": "RENT",
+      "value": 1,
+      "colors": [
+        "Railroad",
+        "Utility"
+      ],
+      "png": "/assets/imgs/rent_cards/Railroad&Utility.png",
+      "svg": "/assets/vector-cards/rent_cards-railroad-utility.svg",
+      "topColor": "Railroad",
+      "bottomColor": "Utility"
+    },
+    {
+      "key": "rent_cards-red-yellow",
+      "title": "Rent",
+      "kind": "RENT",
+      "value": 1,
+      "colors": [
+        "Red",
+        "Yellow"
+      ],
+      "png": "/assets/imgs/rent_cards/Red&Yellow.png",
+      "svg": "/assets/vector-cards/rent_cards-red-yellow.svg",
+      "topColor": "Red",
+      "bottomColor": "Yellow"
+    },
+    {
+      "key": "wildcards-all",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 0,
+      "colors": [
+        "Green",
+        "DarkBlue",
+        "LightBlue",
+        "Red",
+        "Railroad",
+        "Yellow",
+        "Orange",
+        "Brown",
+        "Purple",
+        "Utility"
+      ],
+      "png": "/assets/imgs/wildcards/All.png",
+      "svg": "/assets/vector-cards/wildcards-all.svg"
+    },
+    {
+      "key": "wildcards-darkblue-green",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 4,
+      "colors": [
+        "DarkBlue",
+        "Green"
+      ],
+      "png": "/assets/imgs/wildcards/DarkBlue&Green.png",
+      "svg": "/assets/vector-cards/wildcards-darkblue-green.svg",
+      "topColor": "Green",
+      "bottomColor": "DarkBlue"
+    },
+    {
+      "key": "wildcards-lightblue-brown",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 1,
+      "colors": [
+        "LightBlue",
+        "Brown"
+      ],
+      "png": "/assets/imgs/wildcards/LightBlue&Brown.png",
+      "svg": "/assets/vector-cards/wildcards-lightblue-brown.svg",
+      "topColor": "Brown",
+      "bottomColor": "LightBlue"
+    },
+    {
+      "key": "wildcards-lightblue-railroad",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 4,
+      "colors": [
+        "LightBlue",
+        "Railroad"
+      ],
+      "png": "/assets/imgs/wildcards/LightBlue&Railroad.png",
+      "svg": "/assets/vector-cards/wildcards-lightblue-railroad.svg",
+      "topColor": "LightBlue",
+      "bottomColor": "Railroad"
+    },
+    {
+      "key": "wildcards-purple-orange",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 2,
+      "colors": [
+        "Purple",
+        "Orange"
+      ],
+      "png": "/assets/imgs/wildcards/Purple&Orange.png",
+      "svg": "/assets/vector-cards/wildcards-purple-orange.svg",
+      "topColor": "Orange",
+      "bottomColor": "Purple"
+    },
+    {
+      "key": "wildcards-railroad-green",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 4,
+      "colors": [
+        "Railroad",
+        "Green"
+      ],
+      "png": "/assets/imgs/wildcards/Railroad&Green.png",
+      "svg": "/assets/vector-cards/wildcards-railroad-green.svg",
+      "topColor": "Green",
+      "bottomColor": "Railroad"
+    },
+    {
+      "key": "wildcards-railroad-utility",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 2,
+      "colors": [
+        "Railroad",
+        "Utility"
+      ],
+      "png": "/assets/imgs/wildcards/Railroad&Utility.png",
+      "svg": "/assets/vector-cards/wildcards-railroad-utility.svg",
+      "topColor": "Railroad",
+      "bottomColor": "Utility"
+    },
+    {
+      "key": "wildcards-red-yellow",
+      "title": "Property Wild Card",
+      "kind": "WILDCARD",
+      "value": 3,
+      "colors": [
+        "Red",
+        "Yellow"
+      ],
+      "png": "/assets/imgs/wildcards/Red&Yellow.png",
+      "svg": "/assets/vector-cards/wildcards-red-yellow.svg",
+      "topColor": "Red",
+      "bottomColor": "Yellow"
+    }
+  ]
+}

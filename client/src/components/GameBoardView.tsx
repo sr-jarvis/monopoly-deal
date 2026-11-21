@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { CardView } from './CardView';
+import { completedColorCount } from '../utils/publicTable';
+import { AtlasHandPanel } from './AtlasHandPanel';
 import { PropertyGroupView } from './PropertyGroupView';
 import { ActionChoiceModal } from './ActionChoiceModal';
 import { RearrangeWildcardModal } from './RearrangeWildcardModal';
@@ -20,8 +22,6 @@ import { DrawSequenceOverlay } from './DrawSequenceOverlay';
 import { launchActionTargetFlight, kindFromActionCard, SeatPosition } from '../utils/actionTargetFlightEngine';
 import { GameSettings } from './GameSettings';
 import { EventFeed } from './EventFeed';
-import { ActionToastBanner } from './ActionToastBanner';
-import { HandToolbar } from './HandToolbar';
 import { DeckStackView } from './DeckStackView';
 import { socketService } from '../net/socket';
 import { Card, PropertyColor } from '@monopoly-deal/shared';
@@ -46,6 +46,38 @@ export const GameBoardView: React.FC = () => {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
 
+  const [panel, setPanel] = useState<'hand' | 'players' | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const tableRef = useRef<HTMLElement>(null);
+  const bottomRef = useRef<HTMLElement>(null);
+  const previousPanel = useRef<typeof panel>(null);
+  useEffect(() => {
+    const viewport = typeof document === 'undefined' ? null : document.querySelector('meta[name="viewport"]');
+    viewport?.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+  }, []);
+  useEffect(() => {
+    if (!activeCard && !previewCard && !rearrangeTarget) return;
+    const closeCard = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (previewCard) setPreviewCard(null);
+      else if (activeCard) setActiveCard(null);
+      else setRearrangeTarget(null);
+    };
+    document.addEventListener('keydown', closeCard, true);
+    return () => document.removeEventListener('keydown', closeCard, true);
+  }, [activeCard, previewCard, rearrangeTarget]);
+  useEffect(() => {
+    if (tableRef.current) tableRef.current.inert = !!panel;
+    if (bottomRef.current) bottomRef.current.inert = !!panel;
+    if (!panel && previousPanel.current) {
+      const selector = previousPanel.current === 'hand' ? '.atlas-primary' : '.atlas-table-nav button';
+      document.querySelector<HTMLButtonElement>(selector)?.focus({ preventScroll: true });
+    }
+    previousPanel.current = panel;
+  }, [panel]);
+
   // Drag & Drop Highlight States
   const [isBankDragOver, setIsBankDragOver] = useState(false);
   const [isActionDragOver, setIsActionDragOver] = useState(false);
@@ -53,11 +85,31 @@ export const GameBoardView: React.FC = () => {
   useEffect(() => {
     setActiveCard(null);
     setPreviewCard(null);
+    setPanel(null);
+    setSelectedPlayerId(null);
     setRearrangeTarget(null);
     setShowReplay(false);
     setIsBankDragOver(false);
     setIsActionDragOver(false);
   }, [gameState?.matchId]);
+
+  useEffect(() => {
+    if (!gameState || !activeCard) return;
+    if (gameState.currentTurnPlayerId !== gameState.self.id || gameState.turnPhase !== 'ACTION' ||
+        gameState.pendingActionResolution || gameState.pendingCharge || gameOver ||
+        gameState.actionCountRemaining <= 0 || !gameState.self.hand.some(card => card.id === activeCard.id)) {
+      setActiveCard(null);
+    }
+  }, [gameState, activeCard, gameOver]);
+
+  const mandatoryGameplay = !!gameState && (!!gameOver ||
+    !!gameState.pendingActionResolution?.eligibleResponderIds.includes(gameState.self.id) ||
+    gameState.pendingResolution?.targetPlayerId === gameState.self.id ||
+    (gameState.currentTurnPlayerId === gameState.self.id && gameState.turnPhase === 'DISCARD'));
+  useEffect(() => {
+    if (!mandatoryGameplay) return;
+    setPreviewCard(null); setActiveCard(null); setRearrangeTarget(null); setPanel(null);
+  }, [mandatoryGameplay]);
 
   if (!gameState) return null;
 
@@ -89,6 +141,7 @@ export const GameBoardView: React.FC = () => {
     : '';
 
   const canRearrange = !pendingCharge && !pendingResponse && !gameOver && isMyTurn && ['DRAW', 'ACTION', 'DISCARD'].includes(gameState.turnPhase || '');
+  const canPlay = isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment && !selfOwesPayment && !gameOver && gameState.actionCountRemaining > 0;
 
   const handleCardClick = (card: Card) => {
     if (!isMyTurn || isDrawPhase || isDiscardPhase || waitingForPayment || selfOwesPayment || gameOver || gameState.actionCountRemaining <= 0) return;
@@ -314,95 +367,78 @@ export const GameBoardView: React.FC = () => {
   const rawHand = gameState.self.hand || [];
   const sortedHand = sortCards(rawHand, sortMode);
   const displayedHand = showPlayableOnly
-    ? sortedHand.filter(() => isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment)
+    ? sortedHand.filter(() => canPlay)
     : sortedHand;
 
   const totalHandValue = calculateTotalHandValue(rawHand);
   const selfBankTotal = gameState.self.bank.reduce((sum, c) => sum + (c.value || 0), 0);
-  const playableCount = isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment ? rawHand.length : 0;
+  const playableCount = canPlay ? rawHand.length : 0;
 
   const hostMatch = gameState.matchId && roomState && roomState.roomCode === gameState.roomCode && roomState.hostPlayerId === gameState.self.id && ['IN_PROGRESS', 'FINISHED'].includes(roomState.status)
     ? { roomCode: gameState.roomCode, matchId: gameState.matchId } : undefined;
   const settingsDialog = pendingResponse?.eligibleResponderIds.includes(gameState.self.id) ? 'response'
     : gameOver ? 'win' : isDiscardPhase ? 'discard' : selfOwesPayment && !pendingResponse ? 'payment' : null;
+  const publicPlayers = [{ ...gameState.self, displayName: displayName || 'You', isBot: false, handCount: rawHand.length }, ...gameState.opponents];
+  const selectedPlayer = publicPlayers.find(player => player.id === selectedPlayerId) || publicPlayers[0];
+  const turnLabel = isMyTurn ? 'Your turn' : `${gameState.opponents.find(player => player.id === gameState.currentTurnPlayerId)?.displayName || 'Opponent'}’s turn`;
   const settings = <GameSettings onLeaderboard={() => setShowLeaderboard(true)} onReplay={gameOver ? () => setShowReplay(true) : undefined} hostMatch={hostMatch} />;
 
   return (
-    <div className="min-h-screen md:h-screen w-full flex flex-col bg-slate-950 text-slate-100 p-2 md:p-4 gap-3 md:gap-4 overflow-x-hidden md:overflow-hidden">
-      {/* Top Navigation & Status Bar */}
-      <div className="flex flex-wrap gap-3 justify-between items-center bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl shadow-lg shrink-0">
-        <div className="flex flex-wrap items-center gap-3 min-w-0">
-          <div className="text-sm font-black tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2.5 py-0.5 rounded-lg">
-            MONOPOLY DEAL
-          </div>
-          <div className="text-xs text-slate-400 font-mono">
-            Room: <span className="font-bold text-slate-200">{roomCode}</span>
-          </div>
-        </div>
-
+    <div className="atlas-app">
+      <header className="atlas-brand">
+        <div><small>MONOPOLY DEAL · {roomCode}</small><h1>Pocket <span>Atlas</span></h1></div>
         {!(hostMatch && settingsDialog) && settings}
+      </header>
+      <div role="status" aria-label="Turn status" className="atlas-turn">
+        <span className="atlas-turn-dot" aria-hidden="true" />
+        <strong>{turnLabel}</strong>
+        <span className="atlas-actions">{gameState.actionCountRemaining} / 3 actions left</span>
       </div>
-      <div role="status" aria-label="Turn status" className="md-turn-status">
-        <strong>{isMyTurn ? 'YOUR TURN' : `${gameState.opponents.find(o => o.id === gameState.currentTurnPlayerId)?.displayName || 'Opponent'}'s turn`}</strong>
-        <span>Actions: {gameState.actionCountRemaining} / 3</span>
-        {isMyTurn && !isDrawPhase && !isDiscardPhase && !gameOver && <button onClick={handleEndTurn} disabled={waitingForPayment || selfOwesPayment}>End Turn</button>}
-      </div>
-
-      {waitingForPayment && (
-        <div role="status" className="border border-amber-500/50 bg-amber-950/70 text-amber-100 rounded-xl px-4 py-3 text-sm font-semibold">
-          {waitingForPaymentMessage}
+      <main ref={tableRef} className="atlas-workspace" aria-label="Public table">
+        <div className="atlas-table-nav"><span className="atlas-eyebrow">THE TABLE</span>
+          <button type="button" onClick={() => setPanel('players')} aria-expanded={panel === 'players'} aria-haspopup="dialog">Players · {publicPlayers.length} / {selectedPlayer.id === gameState.self.id ? 'You' : selectedPlayer.displayName}</button>
         </div>
-      )}
-
-      {/* Main Playfield Grid */}
-      <div className="flex-1 grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto] gap-3 md:gap-4 min-h-0 min-w-0">
-        {/* Opponents Area */}
-        <div className="md-opponents bg-slate-800/40 border border-slate-700/60 p-3 rounded-xl">
-          {gameState.opponents.map((opp) => (
-            <div key={opp.id} data-seat-id={opp.id} className="md-opponent p-3 bg-slate-900/80 rounded-xl border border-slate-700/80 text-xs shadow-md">
-              <div className="font-extrabold text-slate-200 flex justify-between mb-2 pb-1 border-b border-slate-800">
-                <span className="flex items-center gap-1.5">
-                  <span>{opp.displayName}</span>
-                  {opp.isBot && (
-                    <span className="px-1.5 py-0.5 text-[10px] rounded bg-amber-900/60 text-amber-300 font-mono font-bold border border-amber-700/50">
-                      {opp.difficulty || 'MEDIUM'}
-                    </span>
-                  )}
-                </span>
-                <span data-draw-hand={opp.id} className="text-sky-400 font-mono">{opp.handCount} in hand</span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-[10px] text-emerald-400 font-bold">
-                  💰 Bank: ${opp.bank.reduce((sum, c) => sum + (c.value || 0), 0)}M
-                </div>
-
-                {/* Opponent Property Mini Sets */}
-                <div className="md-opponent-properties flex gap-2 overflow-x-auto py-1" tabIndex={0} aria-label={`${opp.displayName} property sets`}>
-                  {Object.entries(opp.properties).map(([color, cards]) =>
-                    cards && (cards.length > 0 || opp.buildings?.[color as PropertyColor]?.houseCard || opp.buildings?.[color as PropertyColor]?.hotelCard) ? (
-                      <PropertyGroupView
-                        key={color}
-                        color={color as PropertyColor}
-                        cards={cards}
-                        houseCard={opp.buildings?.[color as PropertyColor]?.houseCard}
-                        hotelCard={opp.buildings?.[color as PropertyColor]?.hotelCard}
-                        isCompleteSet={(opp.completedSetGroups || opp.completedSetColors)?.includes(color)}
-                        hasHouse={opp.buildings?.[color as PropertyColor]?.house}
-                        hasHotel={opp.buildings?.[color as PropertyColor]?.hotel}
-                        onPreviewCard={handleOpponentPublicPreviewCard}
-                      />
-                    ) : null
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+        <h2 className="atlas-table-heading">{selectedPlayer.id === gameState.self.id ? 'Your public table' : `${selectedPlayer.displayName}’s public table`}</h2>
+        {/* All seats remain measurable even while another public table is selected. */}
+        <div className="atlas-seat-rail" aria-label="Public player summaries">
+          {publicPlayers.map(player => <div key={player.id} data-seat-id={player.id} data-seat-player-id={player.id} className={`atlas-seat ${selectedPlayer.id === player.id ? 'atlas-seat-selected' : ''}`}>
+            <strong>{player.id === gameState.self.id ? 'You' : player.displayName}{player.isBot ? ' · Bot' : ''}</strong>
+            <span data-draw-hand={player.id}>{player.id === gameState.self.id ? rawHand.length : 'handCount' in player ? player.handCount : 0} {player.id === gameState.self.id ? 'in hand' : 'hidden cards'}</span>
+            <span data-bank-stack={player.id}>{player.bank.reduce((sum, card) => sum + (card.value || 0), 0)}M bank</span>
+            <span>{completedColorCount(player)} / 3 sets{gameState.currentTurnPlayerId === player.id ? ' · Playing' : ''}</span>
+            {Object.keys(player.properties).map(color => <span key={color} className="atlas-geometry-anchor" data-property-set={selectedPlayer.id !== player.id ? `${player.id}:${color}` : undefined} aria-hidden="true" />)}
+          </div>)}
         </div>
-
-        {/* Center Field: Draw Pile, Discard Pile / Action Drop Zone & Property Board */}
-        <div className="min-w-0 min-h-[260px] md:min-h-0 flex flex-col md:flex-row justify-between items-center bg-slate-800/20 border border-slate-800 rounded-xl p-4 gap-6 overflow-y-auto">
-          {/* Deck Piles & Center Action Drop Zone */}
+        <div className="atlas-summary">
+          <div><b>{completedColorCount(selectedPlayer)} / 3</b><small>complete sets</small></div>
+          <div><b>{selectedPlayer.bank.reduce((sum, card) => sum + (card.value || 0), 0)}M</b><small>bank · {selectedPlayer.bank.length} cards</small></div>
+          <div><b>{selectedPlayer.id === gameState.self.id ? rawHand.length : 'handCount' in selectedPlayer ? selectedPlayer.handCount : 0}</b><small>{selectedPlayer.id === gameState.self.id ? 'your hand' : 'hidden hand'}</small></div>
+        </div>
+        <div className="atlas-groups">
+          {Object.entries(selectedPlayer.properties).map(([color, cards]) =>
+            cards && (cards.length > 0 || selectedPlayer.buildings?.[color as PropertyColor]?.houseCard || selectedPlayer.buildings?.[color as PropertyColor]?.hotelCard) ?
+              <div key={`${selectedPlayer.id}:${color}`} data-property-set={`${selectedPlayer.id}:${color}`}>
+                <PropertyGroupView color={color} cards={cards}
+                  blocked={selectedPlayer.id !== gameState.self.id || waitingForPayment || selfOwesPayment || !!gameOver}
+                  houseCard={selectedPlayer.buildings?.[color as PropertyColor]?.houseCard}
+                  hotelCard={selectedPlayer.buildings?.[color as PropertyColor]?.hotelCard}
+                  hasHouse={selectedPlayer.buildings?.[color as PropertyColor]?.house}
+                  hasHotel={selectedPlayer.buildings?.[color as PropertyColor]?.hotel}
+                  isCompleteSet={(selectedPlayer.completedSetGroups || selectedPlayer.completedSetColors)?.includes(color)}
+                  onPreviewCard={selectedPlayer.id === gameState.self.id ? handlePreviewCard : handleOpponentPublicPreviewCard}
+                  onCardClick={selectedPlayer.id === gameState.self.id && canRearrange ? handleSelfPropertyCardClick(color) : undefined}
+                  selectedCardId={rearrangeTarget?.card.id}
+                  onDropCard={selectedPlayer.id === gameState.self.id ? handleDropPropertyCard : undefined}
+                  isMyTurn={selectedPlayer.id === gameState.self.id && isMyTurn}
+                  turnPhase={gameState.turnPhase} playsMade={3 - gameState.actionCountRemaining} />
+              </div> : null)}
+        </div>
+        {!Object.values(selectedPlayer.properties).some(cards => cards && cards.length > 0) && <div className="atlas-empty">A little room to build.<small>Played properties will appear here.</small></div>}
+        <section className="atlas-bank"><div className="atlas-section-heading"><h3>Bank</h3><small>Public cards · tap to inspect</small></div>
+          <div className="atlas-bank-cards">{selectedPlayer.bank.map(card => <button key={card.id} onClick={() => handlePreviewCard(card)} aria-label={`Preview bank card ${card.title || card.name || card.kind}, ${card.value}M`}>{card.value}M</button>)}
+            {selectedPlayer.bank.length === 0 && <p>No cards banked yet.</p>}</div>
+        </section>
+        <section className="atlas-deck-details" aria-label="Deck and discard"><h3>Deck &amp; discard</h3>
           <div
             data-drop-zone="ACTION"
             onDragOver={(e) => {
@@ -449,47 +485,26 @@ export const GameBoardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Self Property Board View */}
-          <div className="flex-1 min-w-0 w-full overflow-x-auto">
-            <div className="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-              <span>Your Property Sets</span>
-              <span className="text-slate-500 font-normal text-[9px]">(Drag cards onto set to place)</span>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 min-h-[140px] items-start">
-              {Object.entries(gameState.self.properties).map(([color, cards]) =>
-                cards && (cards.length > 0 || gameState.self.buildings?.[color as PropertyColor]?.houseCard || gameState.self.buildings?.[color as PropertyColor]?.hotelCard) ? (
-                  <PropertyGroupView
-                    key={color}
-                    color={color as PropertyColor}
-                    cards={cards}
-                    blocked={waitingForPayment || selfOwesPayment || !!gameOver}
-                    houseCard={gameState.self.buildings?.[color as PropertyColor]?.houseCard}
-                    hotelCard={gameState.self.buildings?.[color as PropertyColor]?.hotelCard}
-                    isCompleteSet={(gameState.self.completedSetGroups || gameState.self.completedSetColors)?.includes(color)}
-                    hasHouse={gameState.self.buildings?.[color as PropertyColor]?.house}
-                    hasHotel={gameState.self.buildings?.[color as PropertyColor]?.hotel}
-                    onCardClick={canRearrange ? handleSelfPropertyCardClick(color as PropertyColor) : undefined}
-                    onPreviewCard={handlePreviewCard}
-                    selectedCardId={rearrangeTarget?.card.id}
-                    onDropCard={handleDropPropertyCard}
-                    isMyTurn={isMyTurn}
-                    turnPhase={gameState.turnPhase}
-                    playsMade={3 - gameState.actionCountRemaining}
-                  />
-                ) : null
-              )}
-            </div>
-          </div>
+        </section>
+        <div className="atlas-log"><EventFeed events={events} /></div>
+      </main>
+      <footer className="atlas-bottom" ref={bottomRef}>
+        <p role="status">{waitingForPayment ? waitingForPaymentMessage : selfOwesPayment ? 'Choose public assets to settle your payment.' : gameOver ? 'Match complete.' : isDiscardPhase ? 'Discard down to seven cards.' : isDrawPhase ? 'Drawing cards automatically…' : isMyTurn ? 'Your turn. Choose a card; nothing plays until you confirm.' : `${turnLabel}. You can inspect any public card.`}</p>
+        <div className="atlas-bottom-controls">
+          <button type="button" className="atlas-primary" aria-haspopup="dialog" aria-expanded={panel === 'hand'} onClick={() => setPanel('hand')}>My Hand · {rawHand.length}</button>
+          {isMyTurn && !isDrawPhase && !isDiscardPhase && !gameOver ? <button onClick={handleEndTurn} disabled={waitingForPayment || selfOwesPayment}>End Turn</button> : <span className="atlas-phase">{gameOver ? 'Finished' : gameState.turnPhase?.toLowerCase()}</span>}
         </div>
 
-        {/* Self Bottom Bar: Bank & Hand Drawer */}
-        <div data-seat-id={gameState.self.id} className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col gap-3 shrink-0">
-          <div className="flex flex-wrap gap-2 justify-between items-center">
-            <div className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex flex-wrap items-center gap-3">
-              <span>Your Hand ({rawHand.length} cards)</span>
-
-              {/* Bank Drop Zone Target */}
-              <div
+      </footer>
+      {panel && <AtlasHandPanel title={panel === 'hand' ? `My Hand · ${rawHand.length}` : 'Around the table'} status={`${turnLabel} · ${gameState.actionCountRemaining}/3 actions left`} onClose={() => { if (activeCard) setActiveCard(null); else if (previewCard) setPreviewCard(null); else if (rearrangeTarget) setRearrangeTarget(null); else setPanel(null); }} suspended={!!activeCard || !!previewCard || !!rearrangeTarget || !!settingsDialog}>
+        {panel === 'players' ? <>
+          <p className="atlas-panel-note">Choose a public table. Opponent hands stay private.</p>
+          <div className="atlas-player-list">{publicPlayers.map(player => <button key={player.id} className={player.id === selectedPlayer.id ? 'atlas-player-choice atlas-chosen' : 'atlas-player-choice'} onClick={() => { setSelectedPlayerId(player.id); setPanel(null); }}>
+            <span className="atlas-avatar" aria-hidden="true">{player.displayName.slice(0, 1)}</span><span><b>{player.id === gameState.self.id ? 'You' : player.displayName}</b><small>{completedColorCount(player)} sets · {player.bank.reduce((sum, card) => sum + (card.value || 0), 0)}M bank · {player.id === gameState.self.id ? rawHand.length : 'handCount' in player ? player.handCount : 0} {player.id === gameState.self.id ? 'in hand' : 'hidden cards'}</small></span><span>{player.id === selectedPlayer.id ? 'Viewing' : 'View →'}</span>
+          </button>)}</div>
+        </> : <>
+          <p className="atlas-panel-note">{canPlay ? 'Tap a card to choose how to play it. Confirm before spending an action.' : 'Tap a card to inspect it. Playing is unavailable right now.'}</p>
+        <div className="atlas-bank-drop">              <div
                 data-drop-zone="BANK"
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -521,38 +536,20 @@ export const GameBoardView: React.FC = () => {
                 }`}
                 title="Drag money or action cards here to deposit into bank"
               >
-                💰 Bank: ${selfBankTotal}M {isBankDragOver ? '📥 DROP HERE' : '📥 (Drop Zone)'}
+                Bank · {selfBankTotal}M · {isBankDragOver ? 'Drop to bank' : 'Drag sideways, then here to bank'}
               </div>
-            </div>
-
-            {waitingForPayment ? (
-              <span className="text-[10px] text-amber-300 font-semibold bg-amber-950/80 px-2 py-0.5 rounded border border-amber-700">
-                {waitingForPaymentMessage}
-              </span>
-            ) : isDrawPhase ? (
-              <span className="text-[10px] text-sky-400 font-semibold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800">
-                Drawing cards automatically…
-              </span>
-            ) : isMyTurn && !isDiscardPhase && (
-              <span className="text-[10px] text-sky-400 font-semibold bg-sky-950/80 px-2 py-0.5 rounded border border-sky-800">
-                Drag card to Bank / Property / Center, or tap card to play
-              </span>
-            )}
-          </div>
-
+</div>
           {/* Interactive Hand Organization Toolbar */}
-          <HandToolbar
-            cardCount={rawHand.length}
-            totalValue={totalHandValue}
-            sortMode={sortMode}
-            onSortChange={handleSortChange}
-            showPlayableOnly={showPlayableOnly}
-            onTogglePlayableOnly={handleTogglePlayableOnly}
-            playableCount={playableCount}
-          />
+          <div className="atlas-hand-tools">
+            <label>Sort <select aria-label="Sort hand" value={sortMode} onChange={event => handleSortChange(event.target.value as HandSortMode)}>
+              <option value="DEFAULT">Original order</option><option value="TYPE">Card type</option><option value="VALUE">Value</option><option value="COLOR">Color</option>
+            </select></label>
+            <button type="button" aria-pressed={showPlayableOnly} onClick={handleTogglePlayableOnly}>{showPlayableOnly ? 'Playable only' : 'All cards'} · {playableCount}</button>
+          </div>
+          <p className="atlas-hand-value">{rawHand.length} cards · {totalHandValue}M total value{rawHand.length > 7 ? ' · Discard to 7 at turn end' : ''}</p>
 
           {/* Inline Hand Cards Container */}
-          <div data-draw-hand={gameState.self.id} className="min-w-0 flex gap-2 overflow-x-auto pb-2 pt-1 items-center min-h-[150px] transition-all">
+          <div data-hand-container data-seat-id={gameState.self.id} className="atlas-hand-grid">
             {displayedHand.length === 0 ? (
               <div className="text-slate-500 text-xs italic py-8 px-4 w-full text-center">
                 {showPlayableOnly ? 'No cards in hand are currently playable.' : 'Your hand is empty.'}
@@ -561,10 +558,10 @@ export const GameBoardView: React.FC = () => {
               displayedHand.map((card, idx) => {
 
                 return (
+                  <div key={card.id} className="atlas-hand-card" data-hand-card-id={card.id}>
                   <CardView
-                    key={card.id}
                     card={card}
-                    onClick={() => handleCardClick(card)}
+                    onClick={() => canPlay ? handleCardClick(card) : handlePreviewCard(card)}
                     onPreview={() => handlePreviewCard(card)}
                     selected={activeCard?.id === card.id}
                     draggable={isMyTurn && !isDrawPhase && !isDiscardPhase && !waitingForPayment && !selfOwesPayment && !gameOver && gameState.actionCountRemaining > 0}
@@ -584,15 +581,18 @@ export const GameBoardView: React.FC = () => {
                       else if (target.kind === 'PROPERTY' && target.targetColor) handleDropPropertyCard(payload.card, target.targetColor);
                     })}
                   />
+                  <div className="atlas-card-caption"><strong>{card.title || card.name}</strong><small>{card.kind || card.type} · {card.value}M</small></div>
+                  </div>
                 );
               })
             )}
           </div>
-        </div>
-      </div>
+
+        </>}
+      </AtlasHandPanel>}
 
       {/* Action Choice Modal */}
-      {previewCard && (
+      {previewCard && !settingsDialog && (
         <CardPreviewModal
           card={previewCard}
           onClose={() => setPreviewCard(null)}
@@ -684,8 +684,8 @@ export const GameBoardView: React.FC = () => {
       )}
 
       {/* Live Event Feed & Toast Banner Overlays */}
-      <EventFeed events={events} />
-      <ActionToastBanner />
+
+      {/* Current action/response is retained in the status strip and public event log. */}
 
       {/* Tournament Leaderboard Modal */}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, PropertyColor, PlayerClientView, BuildingState, propertyGroupColor, nextPropertyGroupKey } from '@monopoly-deal/shared';
-import { CardView } from './CardView';
+import { AtlasCardDialog } from './AtlasCardDialog';
 
 interface ActionChoiceModalProps {
   card: Card;
@@ -166,25 +166,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
   const selectedPlacementGroup = placementGroups.includes(selectedColor) ? selectedColor : placementGroups[0];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div role="dialog" aria-modal="true" aria-label="Play card" className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-6 animate-in fade-in zoom-in duration-150">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-xl font-black text-slate-100">Play Card Action</h2>
-            <p className="text-xs text-slate-400">Choose how to play {card.title || card.name}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white text-lg font-bold px-2 py-0.5 rounded-lg bg-slate-700/50"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Card Preview */}
-        <div className="flex justify-center">
-          <CardView card={card} size="lg" />
-        </div>
+    <AtlasCardDialog card={card} title="Play Card Action" onClose={onClose}>
 
         {/* Target Player Selector (For targeted action cards) */}
         {(isTargetedAction || isWildRent) && opponents.length > 0 && (
@@ -200,6 +182,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                 return (
                   <button
                     key={opp.id}
+                    aria-pressed={selectedTargetPlayer === opp.id}
                     disabled={disabled}
                     onClick={() => {
                       setSelectedTargetPlayer(opp.id);
@@ -235,6 +218,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                   <button
                     key={cardId}
                     onClick={() => setSelectedTargetCardId(cardId)}
+                    aria-pressed={selectedTargetCardId === cardId}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-left ${
                       selectedTargetCardId === cardId
                         ? 'bg-rose-600 border-rose-400 text-white shadow-lg'
@@ -263,6 +247,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                   <button
                     key={cardId}
                     onClick={() => setSelectedTargetCardId(cardId)}
+                    aria-pressed={selectedTargetCardId === cardId}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-left ${
                       selectedTargetCardId === cardId
                         ? 'bg-rose-600 border-rose-400 text-white shadow-lg'
@@ -291,6 +276,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                   <button
                     key={cardId}
                     onClick={() => setSelectedOfferedCardId(cardId)}
+                    aria-pressed={selectedOfferedCardId === cardId}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-left ${
                       selectedOfferedCardId === cardId
                         ? 'bg-sky-600 border-sky-400 text-white shadow-lg'
@@ -318,6 +304,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                   <button
                     key={color}
                     onClick={() => setSelectedTargetSetColor(color)}
+                    aria-pressed={selectedTargetSetColor === color}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-left ${
                       selectedTargetSetColor === color
                         ? 'bg-rose-600 border-rose-400 text-white shadow-lg'
@@ -343,6 +330,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                 <button
                   key={col}
                   onClick={() => setSelectedColor(col)}
+                  aria-pressed={selectedColor === col}
                   className={`p-2 rounded-lg text-xs font-bold border transition text-center ${
                     selectedColor === col
                       ? 'bg-amber-600 border-amber-400 text-white shadow-lg'
@@ -374,6 +362,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                     key={color}
                     disabled={disabled}
                     onClick={() => setSelectedColor(color)}
+                    aria-pressed={selectedRentColor === color}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-center ${selectedRentColor === color ? 'bg-amber-600 border-amber-400 text-white shadow-lg' : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500'} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
                     {color.replace(/([a-z])([A-Z])/g, '$1 $2')} ({ownedCount})
@@ -425,6 +414,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                   <button
                     key={color}
                     onClick={() => setSelectedHouseColor(color)}
+                    aria-pressed={selectedHouseColor === color}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-center ${
                       selectedHouseColor === color
                         ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg'
@@ -456,6 +446,7 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
                   <button
                     key={color}
                     onClick={() => setSelectedHotelColor(color)}
+                    aria-pressed={selectedHotelColor === color}
                     className={`p-2 rounded-lg text-xs font-bold border transition text-center ${
                       selectedHotelColor === color
                         ? 'bg-rose-600 border-rose-400 text-white shadow-lg'
@@ -582,7 +573,6 @@ export const ActionChoiceModal: React.FC<ActionChoiceModalProps> = ({
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </AtlasCardDialog>
   );
 };

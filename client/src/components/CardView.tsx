@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Card, PropertyColor } from '@monopoly-deal/shared';
 import { CardBackView } from './CardBackView';
 import { publicWildcardRotation } from '../utils/publicWildcardOrientation';
+import { resolveVectorArtwork, type VectorArtwork } from '../utils/vectorArtwork';
 import { setActiveDragPayload, DRAG_MIME_TYPE } from '../utils/dragAndDropEngine';
 import {
   isFlippableCard,
@@ -51,36 +52,20 @@ const COLOR_MAP: Record<PropertyColor, string> = {
   ALL: 'bg-gradient-to-br from-red-900 via-emerald-900 to-blue-900 text-white border-slate-400'
 };
 
-function resolveCardImage(card: Card): string | null {
-  if (card.imageLocation) {
-    return card.imageLocation.startsWith('/') ? card.imageLocation : `/${card.imageLocation}`;
-  }
-  if (card.imageUrl) {
-    return card.imageUrl.startsWith('/') ? card.imageUrl : `/${card.imageUrl}`;
-  }
-
-  const cardName = card.title || card.name || '';
-  if (!cardName) return null;
-
-  const cleanName = cardName.replace(/\s+/g, '');
-  const cardKind = card.kind || card.type;
-
-  if (cardKind === 'PROPERTY') {
-    return `/assets/imgs/property_cards/${cleanName}.png`;
-  }
-  if (cardKind === 'ACTION') {
-    return `/assets/imgs/action_cards/${cleanName}.png`;
-  }
-  if (cardKind === 'MONEY') {
-    return `/assets/imgs/money_cards/${cleanName}.png`;
-  }
-  if (cardKind === 'RENT') {
-    return `/assets/imgs/rent_cards/${cleanName}.png`;
-  }
-  if (cardKind === 'WILDCARD') {
-    return `/assets/imgs/wildcards/${cleanName}.png`;
-  }
-  return null;
+/** Keyed by catalog face at the call site: failure state cannot leak to a new card. */
+export function CardArtworkImage({ artwork, title, rotation = 0, children }: {
+  artwork: VectorArtwork; title: string; rotation?: number; children?: React.ReactNode;
+}) {
+  const [stage, setStage] = useState<'svg' | 'png' | 'text'>('svg');
+  if (stage === 'text') return <>{children}</>;
+  return <img
+    src={stage === 'svg' ? artwork.svg : artwork.png}
+    alt={title}
+    data-artwork-format={stage}
+    style={{ transform: `rotate(${rotation}deg)` }}
+    onError={() => setStage(current => current === 'svg' ? 'png' : 'text')}
+    className="w-full h-full object-contain rounded-lg"
+  />;
 }
 
 export const CardView: React.FC<CardViewProps> = ({
@@ -107,18 +92,17 @@ export const CardView: React.FC<CardViewProps> = ({
   onTouchMoveCard,
   onTouchEndCard
 }) => {
-  const [imgError, setImgError] = useState(false);
   const [isDraggingThis, setIsDraggingThis] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number>(0);
 
-  const imgUrl = resolveCardImage(card);
+  const artwork = resolveVectorArtwork(card);
   const cardTitle = card.title || card.name || 'Card';
 
   const sizeClasses = {
-    sm: 'w-16 h-24 text-[10px]',
-    md: 'w-24 h-36 text-xs',
-    lg: 'w-32 h-48 text-sm'
+    sm: 'w-16 h-auto text-[10px]',
+    md: 'w-24 h-auto text-xs',
+    lg: 'w-32 h-auto text-sm'
   };
 
   const colorStyle = card.color ? COLOR_MAP[card.color] : 'bg-slate-800 border-slate-600 text-slate-200';
@@ -271,7 +255,8 @@ export const CardView: React.FC<CardViewProps> = ({
     };
   }, [card, isFlippable, disabled]);
 
-  const activeColor = isFlippable && isFlipped ? (getOppositeColor(card, card.color) || card.color) : card.color;
+  const frontColor = artwork?.topColor || card.color;
+  const activeColor = isFlippable && isFlipped ? (getOppositeColor(card, frontColor) || frontColor) : frontColor;
   const activeColorStyle = activeColor ? COLOR_MAP[activeColor] : colorStyle;
 
   const handleFlipBadgeClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -303,7 +288,7 @@ export const CardView: React.FC<CardViewProps> = ({
       data-property-rotation={publicPropertyGroup ? propertyRotation : undefined}
       style={targetStyle}
       className={`
-        md-card md-perspective md-card-flip-scene relative aspect-[2/3] rounded-xl border-2 shadow-md transition-all duration-200 select-none
+        md-card md-perspective md-card-flip-scene relative aspect-[9/14] rounded-xl border-2 shadow-md transition-all duration-200 select-none
         shrink-0
         ${sizeClasses[size]}
         ${activeColorStyle}
@@ -332,14 +317,10 @@ export const CardView: React.FC<CardViewProps> = ({
       <div className={`md-card__flipper md-card-flip-inner ${isFlipped ? 'is-flipped' : ''}`} data-face={faceDown ? 'back' : 'front'}>
         {/* Front Face */}
         <div className="md-card__face md-card-face md-card-face--front flex flex-col justify-between overflow-hidden bg-slate-900 rounded-lg">
-          {imgUrl && !imgError ? (
-            <img
-              src={imgUrl}
-              alt={cardTitle}
-              style={{ transform: `rotate(${propertyRotation}deg)` }}
-              onError={() => setImgError(true)}
-              className="w-full h-full object-contain p-0.5 rounded-lg bg-slate-950"
-            />
+          {artwork ? (
+            <CardArtworkImage key={artwork.svg} artwork={artwork} title={cardTitle} rotation={propertyRotation}>
+              <div className="p-2 text-center">{cardTitle} · {card.value}M</div>
+            </CardArtworkImage>
           ) : (
             <div className="p-2 flex flex-col h-full justify-between">
               {/* Top Value Banner */}
@@ -376,7 +357,11 @@ export const CardView: React.FC<CardViewProps> = ({
 
         {/* Back Face */}
         <div className="md-card__face md-card-face md-card-face--back">
-          {isFlippable ? (
+          {isFlippable && artwork ? (
+            <CardArtworkImage key={artwork.svg} artwork={artwork} title={`${cardTitle} · ${activeColor}`} rotation={180}>
+              <div className="p-2 text-center">{cardTitle} · {activeColor} · {card.value}M</div>
+            </CardArtworkImage>
+          ) : isFlippable ? (
             <div className="p-2 flex flex-col h-full justify-between bg-slate-950 rounded-lg text-slate-100 border border-amber-400/40">
               <div className="flex justify-between items-center font-bold">
                 <span className="bg-black/80 px-1.5 py-0.5 rounded-full text-amber-300 border border-amber-400/40 text-[10px]">

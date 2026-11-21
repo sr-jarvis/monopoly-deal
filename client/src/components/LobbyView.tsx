@@ -16,6 +16,8 @@ export const LobbyView: React.FC = () => {
   const [showReplay, setShowReplay] = useState(false);
 
   useEffect(() => {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    viewport?.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
     // Read room code from URL query parameter or hash if present
     const urlParams = new URLSearchParams(window.location.search);
     const codeParam = urlParams.get('room') || window.location.hash.replace('#/room/', '');
@@ -55,15 +57,15 @@ export const LobbyView: React.FC = () => {
   const canAddBot = isHost && roomState?.status === 'LOBBY' && !isFull && !hasBot;
 
   return (
-    <div className="max-w-lg mx-auto mt-12 p-6 bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700 shadow-2xl">
+    <div className="atlas-lobby">
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 mb-1">
           <span className="text-3xl">🏠</span>
           <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-emerald-400 to-amber-300">
-            Monopoly Deal
+            Pocket Atlas
           </h1>
         </div>
-        <p className="text-xs text-slate-400 font-medium">Server-Authoritative PWA Experience</p>
+        <p className="text-xs text-slate-400 font-medium">MONOPOLY DEAL · A place at the table</p>
 
         <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-slate-900/60 rounded-full border border-slate-700 text-xs">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
@@ -88,7 +90,7 @@ export const LobbyView: React.FC = () => {
         </div>
 
         {/* WebAudio Ambient Music Player Bar */}
-        <div className="mt-3 flex justify-center">
+        <div className="atlas-lobby-music mt-3 flex justify-center">
           <MusicPlayerControls />
         </div>
       </div>
@@ -96,11 +98,14 @@ export const LobbyView: React.FC = () => {
       {!roomState ? (
         <div className="space-y-6">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label htmlFor="atlas-player-name" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
               Player Display Name
             </label>
             <input
+              id="atlas-player-name"
               type="text"
+              autoComplete="nickname"
+              maxLength={30}
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="Enter your name..."
@@ -120,6 +125,9 @@ export const LobbyView: React.FC = () => {
             <form onSubmit={handleJoinRoom} className="flex gap-2">
               <input
                 type="text"
+                aria-label="Room code"
+                autoCapitalize="characters"
+                autoComplete="off"
                 value={inputCode}
                 onChange={(e) => setInputCode(e.target.value.toUpperCase())}
                 placeholder="CODE"
@@ -186,6 +194,7 @@ export const LobbyView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Bot Difficulty:</span>
                     <select
+                      aria-label="Bot difficulty"
                       value={botDifficulty}
                       onChange={(e) => setBotDifficulty(e.target.value)}
                       className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
